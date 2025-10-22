@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 // Para controlar logs de debug (defina como 0 para desabilitar)
-#define DEBUG_DWIN 1
+#define DEBUG_DWIN 0
 
 #if DEBUG_DWIN
 #define DWIN_LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)

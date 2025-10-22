@@ -39,7 +39,9 @@ stm_vcom_error/cli_driver.o: ..\Core\Src\cli_driver.c \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_usb.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd_ex.h \
   ..\Core\Inc\rtc_driver.h ..\Core\Inc\rtc.h ..\Core\Inc\main.h \
-  ..\USBX\App\ux_device_cdc_acm.h \
+  ..\Core\Inc\medicao_handler.h ..\Core\Inc\temp_sensor.h \
+  ..\Core\Inc\relato.h ..\Core\Inc\gerenciador_configuracoes.h \
+  ..\Core\Inc\eeprom_driver.h ..\USBX\App\ux_device_cdc_acm.h \
   ..\Middlewares\ST\usbx\common\core\inc\ux_api.h \
   ..\Middlewares\ST\usbx\ports\generic\inc\ux_port.h \
   ..\USBX\App\ux_user.h \

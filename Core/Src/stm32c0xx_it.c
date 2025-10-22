@@ -22,6 +22,7 @@
 #include "stm32c0xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "dwin_driver.h"
 #include "ads1232_driver.h"
 /* USER CODE END Includes */

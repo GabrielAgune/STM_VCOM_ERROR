@@ -48,15 +48,15 @@ stm_vcom_error/app_manager.o: ..\Core\Src\app_manager.c \
   ..\Core\Inc\autenticacao_handler.h ..\Core\Inc\dwin_parser.h \
   ..\Core\Inc\rtc_handler.h ..\Core\Inc\display_handler.h \
   ..\Core\Inc\medicao_handler.h ..\Core\Inc\relato.h \
-  ..\Core\Inc\graos_handler.h ..\Core\Inc\usb.h \
-  ..\USBX\App\app_usbx_device.h \
+  ..\Core\Inc\graos_handler.h \
   ..\Middlewares\ST\usbx\common\core\inc\ux_api.h \
   ..\Middlewares\ST\usbx\ports\generic\inc\ux_port.h \
   ..\USBX\App\ux_user.h \
   ..\Middlewares\ST\usbx\common\core\inc\ux_utility.h \
   ..\Middlewares\ST\usbx\common\core\inc\ux_system.h \
+  ..\Middlewares\ST\usbx\common\core\inc\ux_device_stack.h \
+  ..\Core\Inc\usb.h ..\USBX\App\app_usbx_device.h \
   ..\USBX\App\ux_device_cdc_acm.h \
   ..\Middlewares\ST\usbx\common\usbx_device_classes\inc\ux_device_class_cdc_acm.h \
   ..\USBX\App\ux_device_descriptors.h ..\USBX\Target\ux_stm32_config.h \
-  ..\Middlewares\ST\usbx\common\usbx_stm32_device_controllers\ux_dcd_stm32.h \
-  ..\Middlewares\ST\usbx\common\core\inc\ux_device_stack.h
+  ..\Middlewares\ST\usbx\common\usbx_stm32_device_controllers\ux_dcd_stm32.h

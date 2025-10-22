@@ -54,6 +54,7 @@ static char* stristr(const char* str1, const char* str2);
 
 void Graos_Handle_Entrada_Tela(void)
 {
+		
     printf("Graos_Handler: Entrando na tela de selecao de graos.\r\n");
     s_em_tela_de_selecao = true;
     uint8_t indice_salvo = 0;
@@ -63,7 +64,7 @@ void Graos_Handle_Entrada_Tela(void)
     
     // Atualiza também os campos de navegação por setas
     atualizar_display_grao_selecionado(s_indice_grao_selecionado);
-
+		Controller_SetScreen(SELECT_GRAO);
     DWIN_Driver_SetScreen(SELECT_GRAO);
 }
 
@@ -82,6 +83,7 @@ void Graos_Handle_Navegacao(int16_t tecla)
             s_em_tela_de_selecao = false;
             Gerenciador_Config_Set_Grao_Ativo(s_indice_grao_selecionado);
             Graos_Limpar_Resultados_Pesquisa();
+						Controller_SetScreen(PRINCIPAL);
             DWIN_Driver_SetScreen(PRINCIPAL);
             break;
 
@@ -89,6 +91,7 @@ void Graos_Handle_Navegacao(int16_t tecla)
             printf("Graos_Handler: Selecao (via setas) cancelada.\r\n");
             s_em_tela_de_selecao = false;
             Graos_Limpar_Resultados_Pesquisa();
+						Controller_SetScreen(PRINCIPAL);
             DWIN_Driver_SetScreen(PRINCIPAL);
             break;
         

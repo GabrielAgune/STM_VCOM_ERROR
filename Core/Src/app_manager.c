@@ -11,10 +11,12 @@
  ******************************************************************************/
 
 #include "app_manager.h"
-#include "usb.h"
+#include "ux_api.h"          // Essencial para os tipos (UINT, ULONG...)
+#include "ux_device_stack.h" // Para a função de disconnect/uninit
+#include "usb.h"             // Para a função MX_USB_PCD_Init e o handle
 #include "app_usbx_device.h"
-#include "ux_device_stack.h"
 
+extern PCD_HandleTypeDef hpcd_USB_DRD_FS;
 //================================================================================
 // Variáveis de Estado Globais do Módulo
 //================================================================================
@@ -184,12 +186,20 @@ static void Task_Handle_High_Frequency_Polling(void) {
  * @brief Executa a sequência para colocar o MCU em modo de baixo consumo.
  */
 static void EnterStopMode(void) {
+		
+		// 1. Desconecta a stack do host de forma limpa
+    ux_device_stack_disconnect();
 
-    // Garante que todas as mensagens de log pendentes sejam enviadas
-    while (DWIN_Driver_IsTxBusy()) {
-        DWIN_TX_Pump();
-    }
-    HAL_Delay(10);
+    // 2. Desinicializa a stack de dispositivo USBX (libera classes e endpoints)
+    ux_device_stack_uninitialize();
+
+    // 3. Desinicializa o sistema USBX (libera o memory pool)
+    //    ESTE É O PASSO CRÍTICO QUE FALTAVA.
+    ux_system_uninitialize();
+
+    // 4. Desliga o hardware da periférica USB
+    HAL_PCD_DeInit(&hpcd_USB_DRD_FS);
+    HAL_Delay(100);
 
     HAL_GPIO_WritePin(DISPLAY_PWR_CTRL_GPIO_Port, DISPLAY_PWR_CTRL_Pin, GPIO_PIN_SET);
     HAL_Delay(800);
@@ -206,7 +216,13 @@ static void EnterStopMode(void) {
 static void HandleWakeUpSequence(void) {
     // O código continua daqui quando a interrupção de toque (EXTI) acorda o MCU
     SystemClock_Config();
-
+		
+		HAL_Delay(20);
+		MX_USBX_Device_Init();
+		
+		
+    // 2. Reinicializa o hardware da periférica USB (PCD).
+    MX_USB_PCD_Init();
     // Reinicializa periféricos que perdem configuração no modo Stop
     MX_USART2_UART_Init();
     DWIN_Driver_Init(&huart2, Controller_DwinCallback);

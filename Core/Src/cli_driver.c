@@ -1,6 +1,9 @@
 #include "cli_driver.h"
 #include "dwin_driver.h"
 #include "rtc_driver.h"
+#include "medicao_handler.h"
+#include "temp_sensor.h"
+#include "relato.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -16,10 +19,15 @@
 // Protótipos de Funções de Comando
 static void Process_Command(void);
 static void Cmd_Help(char* args);
+static void Cmd_WhoAmI(char* args);
 static void Cmd_Dwin(char* args);
 static void Cmd_SetTime(char* args);
 static void Cmd_SetDate(char* args);
 static void Cmd_Date(char* args);
+static void Cmd_GetPeso(char* args);
+static void Cmd_GetTemp(char* args);
+static void Cmd_GetFreq(char* args);
+static void Cmd_Service(char* args);
 static void Handle_Dwin_PIC(char* sub_args);
 static void Handle_Dwin_INT(char* sub_args);
 static void Handle_Dwin_INT32(char* sub_args);
@@ -36,6 +44,8 @@ typedef struct { const char* name; void (*handler)(char* args); } cli_command_t;
 static const cli_command_t s_command_table[] = {
     { "HELP", Cmd_Help }, { "?", Cmd_Help }, { "DWIN", Cmd_Dwin },
 		{ "SETTIME", Cmd_SetTime }, { "SETDATE", Cmd_SetDate }, { "DATE", Cmd_Date },
+		{"PESO", Cmd_GetPeso}, {"TEMP", Cmd_GetTemp}, {"FREQ", Cmd_GetFreq},
+		{ "SERVICE", Cmd_Service }, 
 };
 static const size_t NUM_COMMANDS = sizeof(s_command_table) / sizeof(s_command_table[0]);
 
@@ -48,7 +58,7 @@ static const dwin_subcommand_t s_dwin_table[] = {
 static const size_t NUM_DWIN_SUBCOMMANDS = sizeof(s_dwin_table) / sizeof(s_dwin_table[0]);
 
 static const char HELP_TEXT[] =
-    "\r\n====================== CLI de Teste DWIN & RTC =====================\r\n"
+"\r\n====================== CLI de Teste DWIN & RTC =========================\r\n"
     "| HELP ou ?                | Mostra esta ajuda.                        |\r\n"
     "| DWIN PIC <id>            | Muda a tela (ex: DWIN PIC 1).             |\r\n"
     "| DWIN INT <addr> <val>    | Escreve int16 (ex: DWIN INT 1500 -10).    |\r\n"
@@ -57,6 +67,10 @@ static const char HELP_TEXT[] =
     "| SETTIME HH:MM:SS         | Ajusta a hora do RTC.                     |\r\n"
     "| SETDATE DD/MM/YY         | Ajusta a data do RTC.                     |\r\n"
     "| DATE                     | Mostra a data e hora atuais.              |\r\n"
+		"| SERVICE                  | Entra na tela de servico.                 |\r\n"
+		"| PESO                     | Mostra a leitura atual da balanca.        |\r\n"
+    "| TEMP                     | Mostra a leitura do sensor de temperatura.|\r\n"
+    "| FREQ                     | Mostra a ultima leitura de frequencia.    |\r\n"
     "========================================================================\r\n";
 
 // ============================================================================
@@ -122,7 +136,7 @@ void CLI_Receive_Char(uint8_t received_char) {
         }
     } else if (s_cli_buffer_index < (CLI_BUFFER_SIZE - 1) && isprint(received_char)) {
         s_cli_buffer[s_cli_buffer_index++] = received_char;
-        CLI_Printf("%c", received_char); // Eco do caractere
+        CLI_Printf("%c", received_char); 
     }
 }
 
@@ -153,6 +167,15 @@ static void Process_Command(void) {
 
 static void Cmd_Help(char* args) { 
     CLI_Puts(HELP_TEXT); 
+}
+
+static void Cmd_WhoAmI(char* args) {
+    Who_am_i();
+}
+
+static void Cmd_Service(char* args)
+{
+	DWIN_Driver_SetScreen(TELA_SERVICO);
 }
 
 static void Cmd_SetTime(char* args) {
@@ -204,6 +227,26 @@ static void Cmd_Date(char* args) {
         CLI_Printf("Erro: Nao foi possivel ler a data/hora do RTC.");
     }
 }
+
+static void Cmd_GetPeso(char* args) {
+    DadosMedicao_t dados_atuais;
+    Medicao_Get_UltimaMedicao(&dados_atuais);
+    CLI_Printf("Dados da Balanca:\r\n  - Peso: %.2f g\r\n", dados_atuais.Peso);
+}
+
+static void Cmd_GetTemp(char* args) {
+    float temperatura = TempSensor_GetTemperature();
+    CLI_Printf("Temperatura interna do MCU: %.2f C\r\n", temperatura);
+}
+
+static void Cmd_GetFreq(char* args) {
+    DadosMedicao_t dados_atuais;
+    Medicao_Get_UltimaMedicao(&dados_atuais);
+    CLI_Printf("Dados de Frequencia:\r\n");
+    CLI_Printf("  - Pulsos (em 1s): %.1f\r\n", dados_atuais.Frequencia);
+    CLI_Printf("  - Escala A (calc): %.2f\r\n", dados_atuais.Escala_A);
+}
+
 
 static void Cmd_Dwin(char* args) {
     if (args == NULL) { 

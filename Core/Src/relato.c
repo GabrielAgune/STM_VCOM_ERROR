@@ -2,6 +2,7 @@
 #include "gerenciador_configuracoes.h"
 #include "medicao_handler.h"
 #include "rtc_driver.h"
+#include "cli_driver.h"
 #include <stdio.h>
 
 // REMOVIDO: A variável global foi eliminada para economizar RAM estática.
@@ -17,19 +18,19 @@ void Who_am_i(void)
 {
     // MOVIDO: de global para local. A memória é alocada na stack e liberada ao sair.
     Config_Aplicacao_t config_snapshot;
-	Gerenciador_Config_Get_Config_Snapshot(&config_snapshot);
-
-    printf(Dupla);
-    printf("         G620_Teste_Gab\n\r");
-    printf("     (c) GEHAKA, 2004-2025\n\r");
-    printf(Linha);
-    printf("CPU      =           STM32C071RB\n\r");
-    printf("Firmware = %21s\r\n", FIRMWARE);
-    printf("Hardware = %21s\r\n", HARDWARE);
-    printf("Serial   = %21s\r\n", config_snapshot.nr_serial);
-    printf(Linha);
-    printf("Medidas  = %21d\n\r", 22);
-    printf(Ejeta);
+	  Gerenciador_Config_Get_Config_Snapshot(&config_snapshot);
+		
+    CLI_Printf(Dupla);
+    CLI_Printf("         G620_Teste_Gab\n\r");
+    CLI_Printf("     (c) GEHAKA, 2004-2025\n\r");
+    CLI_Printf(Linha);
+    CLI_Printf("CPU      =           STM32C071RB\n\r");
+    CLI_Printf("Firmware = %21s\r\n", FIRMWARE);
+    CLI_Printf("Hardware = %21s\r\n", HARDWARE);
+    CLI_Printf("Serial   = %21s\r\n", config_snapshot.nr_serial);
+    CLI_Printf(Linha);
+    CLI_Printf("Medidas  = %21d\n\r", 22);
+    CLI_Printf(Ejeta);
 }
 
 void Assinatura(void)
