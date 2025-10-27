@@ -206,9 +206,9 @@ void Graos_Confirmar_Selecao_Pesquisa(uint8_t slot_selecionado)
         s_indice_grao_selecionado = indice_final; // Atualiza índice principal
         Gerenciador_Config_Set_Grao_Ativo(indice_final);
 
-        s_target_screen = PRINCIPAL;         // Retorna para a tela principal
+        s_target_screen = SELECT_GRAO;         // Retorna para a tela principal
         s_display_needs_update = false;      // Não precisa atualizar a tela de grãos
-        Controller_SetScreen(PRINCIPAL);     // Muda a tela imediatamente
+        Controller_SetScreen(SELECT_GRAO);     // Muda a tela imediatamente
         Graos_Limpar_Resultados_Pesquisa();  // Limpa o estado da pesquisa
     } else {
         CLI_Printf("[ERR] GRAOS_DBG: Confirmar_Selecao_Pesquisa - Slot invalido (%u) para resultados (%u)\r\n",

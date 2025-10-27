@@ -10,7 +10,7 @@
 #include <stdio.h>
 
 // Para controlar logs de debug (defina como 0 para desabilitar)
-#define DEBUG_DWIN 1
+#define DEBUG_DWIN 0
 
 #if DEBUG_DWIN
 #define DWIN_LOG(fmt, ...) printf(fmt, ##__VA_ARGS__)
@@ -19,8 +19,8 @@
 #endif
 
 // Tamanhos e constantes
-#define DWIN_RX_PACKET_TIMEOUT_MS  5
-#define DWIN_RX_ERROR_COOLDOWN_MS  10
+#define DWIN_RX_PACKET_TIMEOUT_MS  20
+#define DWIN_RX_ERROR_COOLDOWN_MS  100
 
 // Variáveis estáticas privadas
 static UART_HandleTypeDef* s_huart = NULL;
@@ -77,13 +77,10 @@ void DWIN_Driver_Init(UART_HandleTypeDef *huart, dwin_rx_callback_t callback)
     DWIN_Start_Listening();
 }
 
-// Em dwin_driver.c, substitua a função inteira por esta:
-
 void DWIN_Driver_Process(void)
 {
     const uint32_t now = HAL_GetTick();
 
-    // Lógica de recuperação de erro (mantida para robustez)
     if (s_rx_error_cooldown_tick != 0u)
     {
         if ((now - s_rx_error_cooldown_tick) < DWIN_RX_ERROR_COOLDOWN_MS)
@@ -109,13 +106,12 @@ void DWIN_Driver_Process(void)
         return;
     }
 
-    // A lógica de timeout original é mantida, mas com valor baixo
     if ((now - s_last_rx_event_tick) < DWIN_RX_PACKET_TIMEOUT_MS)
     {
         return;
     }
 
-    // Copia os dados recebidos para um buffer local para análise
+    // Copiar buffer para salvaguarda
     uint8_t local_buffer[DWIN_RX_BUFFER_SIZE];
     uint16_t local_len;
 
@@ -126,67 +122,54 @@ void DWIN_Driver_Process(void)
     s_received_len = 0u;
     __enable_irq();
 
-    DWIN_Start_Listening(); // Rearma o DMA o mais cedo possível
+    DWIN_Start_Listening();
 
 #if DEBUG_DWIN
-    DWIN_LOG("[DEBUG] DWIN RX pacote RAW (len=%d): ", local_len);
-    for (uint16_t i = 0u; i < local_len; i++) { DWIN_LOG("%02X ", local_buffer[i]); }
+    DWIN_LOG("[DEBUG] DWIN RX pacote (len=%d): ", local_len);
+    for (uint16_t i = 0u; i < local_len; i++)
+    {
+        DWIN_LOG("%02X ", local_buffer[i]);
+    }
     DWIN_LOG("\r\n");
 #endif
 
-    // --- INÍCIO DA NOVA LÓGICA DE PARSER INTELIGENTE ---
-
-    uint8_t* packet_start = NULL; // Ponteiro para o início do pacote válido
-    uint16_t packet_len = 0;
-
-    // Procura pela sequência de cabeçalho "5A A5" no buffer recebido
-    for (uint16_t i = 0; i < (local_len > 0 ? local_len - 1 : 0); i++)
-    {
-        if (local_buffer[i] == 0x5A && local_buffer[i+1] == 0xA5)
-        {
-            // Encontramos o cabeçalho!
-            packet_start = &local_buffer[i];
-            packet_len = local_len - i;
-            break; // Sai do loop assim que encontrar o primeiro
-        }
-    }
-
-    if (packet_start == NULL)
-    {
-        DWIN_LOG("[ERROR] Cabecalho 5A A5 nao encontrado no pacote.\r\n");
-        return;
-    }
-
-    // --- FIM DA NOVA LÓGICA ---
-
-    // Filtro rápido de ACK padrão "OK"
-    if ((packet_len >= 6u) &&
-        (packet_start[2] == 0x03) && (packet_start[3] == 0x82) &&
-        (packet_start[4] == 0x4F) && (packet_start[5] == 0x4B))
+    // Filtro rápido ACK padrão "OK"
+    if ((local_len == 6u) &&
+        (local_buffer[0] == 0x5A) && (local_buffer[1] == 0xA5) &&
+        (local_buffer[2] == 0x03) && (local_buffer[3] == 0x82) &&
+        (local_buffer[4] == 0x4F) && (local_buffer[5] == 0x4B))
     {
         DWIN_LOG("[DEBUG] ACK 'OK' descartado.\r\n");
         return;
     }
 
-    // Validação do pacote (agora usando packet_start e packet_len)
-    if (packet_len >= 4u)
+    // Validação pacote básico
+    if ((local_len >= 4u) &&
+        (local_buffer[0] == 0x5A) && (local_buffer[1] == 0xA5))
     {
-        uint8_t payload_len = packet_start[2];
-        uint16_t declared_len = 3u + payload_len;
+        uint8_t payload_len = local_buffer[2];
+        uint8_t declared_len = 3u + payload_len;
 
-        if (packet_len >= declared_len)
+        if (local_len >= declared_len)
         {
             if (s_rx_callback != NULL)
             {
-                // Envia o pacote CORRIGIDO para a aplicação
-                DWIN_LOG("[INFO] Pacote Corrigido enviado para a aplicacao.\r\n");
-                s_rx_callback(packet_start, declared_len);
+                s_rx_callback(local_buffer, declared_len);
             }
         }
         else
         {
-            DWIN_LOG("[ERROR] Pacote truncado apos header: recebido=%u, esperado=%u\r\n", packet_len, declared_len);
+            DWIN_LOG("[ERROR] Pacote truncado: recebido=%d, esperado=%d\r\n", local_len, declared_len);
         }
+    }
+    else
+    {
+        DWIN_LOG("[ERROR] Pacote invalido descartado (len=%d): ", local_len);
+        for (uint16_t i = 0u; i < local_len; i++)
+        {
+            DWIN_LOG("%02X ", local_buffer[i]);
+        }
+        DWIN_LOG("\r\n");
     }
 }
 

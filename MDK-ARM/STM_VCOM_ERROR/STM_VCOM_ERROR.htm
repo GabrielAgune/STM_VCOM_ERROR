@@ -3,7 +3,7 @@
 <title>Static Call Graph - [STM_VCOM_ERROR\STM_VCOM_ERROR.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image STM_VCOM_ERROR\STM_VCOM_ERROR.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Mon Oct 27 11:01:00 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 6230001: Last Updated: Mon Oct 27 15:09:46 2025
 <BR><P>
 <H3>Maximum Stack Usage =      12064 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -725,7 +725,8 @@ Global Symbols
 <P><STRONG><a name="[81]"></a>App_Manager_Init</STRONG> (Thumb, 72 bytes, Stack size 8 bytes, app_manager.o(.text.App_Manager_Init))
 <BR><BR>[Stack]<UL><LI>Max Depth = 216<LI>Call Chain = App_Manager_Init &rArr; Gerenciador_Config_Validar_e_Restaurar &rArr; EEPROM_Driver_Read_Blocking &rArr; HAL_I2C_Mem_Read &rArr; I2C_WaitOnFlagUntilTimeout &rArr; I2C_IsErrorOccurred
 </UL>
-<BR>[Calls]<UL><LI><a href="#[86]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RTC_Driver_Init
+<BR>[Calls]<UL><LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;EEPROM_Driver_Init
+<LI><a href="#[86]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RTC_Driver_Init
 <LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_Init
 <LI><a href="#[82]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;CLI_Init
 <LI><a href="#[8d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Medicao_Set_Umidade
@@ -737,7 +738,6 @@ Global Symbols
 <LI><a href="#[85]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Gerenciador_Config_Init
 <LI><a href="#[7a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ADS1232_Init
 <LI><a href="#[8a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Frequency_Init
-<LI><a href="#[84]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;EEPROM_Driver_Init
 </UL>
 <BR>[Called By]<UL><LI><a href="#[20]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main
 </UL>
@@ -785,9 +785,10 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[9c]"></a>App_Manager_Run_Self_Diagnostics</STRONG> (Thumb, 272 bytes, Stack size 32 bytes, app_manager.o(.text.App_Manager_Run_Self_Diagnostics))
-<BR><BR>[Stack]<UL><LI>Max Depth = 360<LI>Call Chain = App_Manager_Run_Self_Diagnostics &rArr; Test_DisplayInfo &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 176<LI>Call Chain = App_Manager_Run_Self_Diagnostics &rArr; EEPROM_Driver_IsReady &rArr; HAL_I2C_IsDeviceReady &rArr; I2C_WaitOnFlagUntilTimeout &rArr; I2C_IsErrorOccurred
 </UL>
 <BR>[Calls]<UL><LI><a href="#[7c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_Delay
+<LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;EEPROM_Driver_IsReady
 <LI><a href="#[9b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_TX_Pump
 <LI><a href="#[a8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;TempSensor_GetTemperature
 <LI><a href="#[98]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;puts
@@ -795,7 +796,6 @@ Global Symbols
 <LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Test_DisplayInfo
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Controller_SetScreen
 <LI><a href="#[80]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ADS1232_Tare
-<LI><a href="#[aa]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;EEPROM_Driver_IsReady
 <LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;App_Manager_Process
@@ -1024,16 +1024,14 @@ Global Symbols
 <LI><a href="#[a7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Test_DisplayInfo
 </UL>
 
-<P><STRONG><a name="[9e]"></a>DWIN_Driver_Process</STRONG> (Thumb, 428 bytes, Stack size 288 bytes, dwin_driver.o(.text.DWIN_Driver_Process))
-<BR><BR>[Stack]<UL><LI>Max Depth = 400<LI>Call Chain = DWIN_Driver_Process &rArr; puts &rArr; fputc &rArr; USBD_CDC_ACM_Transmit &rArr; _ux_device_class_cdc_acm_write_run &rArr; _ux_device_stack_transfer_run &rArr; __aeabi_uidivmod
+<P><STRONG><a name="[9e]"></a>DWIN_Driver_Process</STRONG> (Thumb, 260 bytes, Stack size 80 bytes, dwin_driver.o(.text.DWIN_Driver_Process))
+<BR><BR>[Stack]<UL><LI>Max Depth = 152<LI>Call Chain = DWIN_Driver_Process &rArr; HAL_UARTEx_ReceiveToIdle_DMA &rArr; UART_Start_Receive_DMA &rArr; HAL_DMA_Start_IT
 </UL>
 <BR>[Calls]<UL><LI><a href="#[77]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
 <LI><a href="#[e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Error_Handler
 <LI><a href="#[de]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UARTEx_ReceiveToIdle_DMA
 <LI><a href="#[df]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_AbortReceive_IT
 <LI><a href="#[e1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memcpy4
-<LI><a href="#[98]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;puts
-<LI><a href="#[a6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;App_Manager_Process
 </UL>
@@ -1085,8 +1083,8 @@ Global Symbols
 <LI><a href="#[a2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DisplayHandler_Process
 </UL>
 
-<P><STRONG><a name="[e6]"></a>DWIN_Driver_WriteString</STRONG> (Thumb, 352 bytes, Stack size 288 bytes, dwin_driver.o(.text.DWIN_Driver_WriteString))
-<BR><BR>[Stack]<UL><LI>Max Depth = 288<LI>Call Chain = DWIN_Driver_WriteString
+<P><STRONG><a name="[e6]"></a>DWIN_Driver_WriteString</STRONG> (Thumb, 344 bytes, Stack size 88 bytes, dwin_driver.o(.text.DWIN_Driver_WriteString))
+<BR><BR>[Stack]<UL><LI>Max Depth = 88<LI>Call Chain = DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_NVIC_DisableIRQ
 <LI><a href="#[e3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_NVIC_EnableIRQ
@@ -1139,7 +1137,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[81]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;App_Manager_Init
 </UL>
 
-<P><STRONG><a name="[a2]"></a>DisplayHandler_Process</STRONG> (Thumb, 484 bytes, Stack size 72 bytes, display_handler.o(.text.DisplayHandler_Process))
+<P><STRONG><a name="[a2]"></a>DisplayHandler_Process</STRONG> (Thumb, 440 bytes, Stack size 72 bytes, display_handler.o(.text.DisplayHandler_Process))
 <BR><BR>[Stack]<UL><LI>Max Depth = 12024<LI>Call Chain = DisplayHandler_Process &rArr; Display_ProcessPrintEvent &rArr; Relatorio_Printer &rArr; Assinatura &rArr; RTC_Driver_GetDate &rArr; HAL_RTC_GetDate
 </UL>
 <BR>[Calls]<UL><LI><a href="#[77]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
@@ -1163,7 +1161,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[d7]"></a>Display_Adj_Capa</STRONG> (Thumb, 20 bytes, Stack size 8 bytes, display_handler.o(.text.Display_Adj_Capa))
-<BR><BR>[Stack]<UL><LI>Max Depth = 296<LI>Call Chain = Display_Adj_Capa &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 96<LI>Call Chain = Display_Adj_Capa &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Controller_SetScreen
@@ -1172,7 +1170,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[da]"></a>Display_Preset</STRONG> (Thumb, 44 bytes, Stack size 8 bytes, display_handler.o(.text.Display_Preset))
-<BR><BR>[Stack]<UL><LI>Max Depth = 296<LI>Call Chain = Display_Preset &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 96<LI>Call Chain = Display_Preset &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Controller_SetScreen
@@ -1200,7 +1198,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[d3]"></a>Display_SetCompany</STRONG> (Thumb, 152 bytes, Stack size 96 bytes, display_handler.o(.text.Display_SetCompany))
-<BR><BR>[Stack]<UL><LI>Max Depth = 384<LI>Call Chain = Display_SetCompany &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 184<LI>Call Chain = Display_SetCompany &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strlen
@@ -1214,7 +1212,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[c8]"></a>Display_SetDecimals</STRONG> (Thumb, 92 bytes, Stack size 56 bytes, display_handler.o(.text.Display_SetDecimals))
-<BR><BR>[Stack]<UL><LI>Max Depth = 344<LI>Call Chain = Display_SetDecimals &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 144<LI>Call Chain = Display_SetDecimals &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strlen
@@ -1235,7 +1233,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[d6]"></a>Display_SetRepeticoes</STRONG> (Thumb, 92 bytes, Stack size 56 bytes, display_handler.o(.text.Display_SetRepeticoes))
-<BR><BR>[Stack]<UL><LI>Max Depth = 344<LI>Call Chain = Display_SetRepeticoes &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 144<LI>Call Chain = Display_SetRepeticoes &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strlen
@@ -1248,7 +1246,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[cc]"></a>Display_SetUser</STRONG> (Thumb, 152 bytes, Stack size 96 bytes, display_handler.o(.text.Display_SetUser))
-<BR><BR>[Stack]<UL><LI>Max Depth = 384<LI>Call Chain = Display_SetUser &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 184<LI>Call Chain = Display_SetUser &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strlen
@@ -1262,7 +1260,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[c9]"></a>Display_Set_Serial</STRONG> (Thumb, 136 bytes, Stack size 88 bytes, display_handler.o(.text.Display_Set_Serial))
-<BR><BR>[Stack]<UL><LI>Max Depth = 376<LI>Call Chain = Display_Set_Serial &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 176<LI>Call Chain = Display_Set_Serial &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;strcpy
@@ -1278,7 +1276,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[d8]"></a>Display_ShowAbout</STRONG> (Thumb, 20 bytes, Stack size 8 bytes, display_handler.o(.text.Display_ShowAbout))
-<BR><BR>[Stack]<UL><LI>Max Depth = 296<LI>Call Chain = Display_ShowAbout &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 96<LI>Call Chain = Display_ShowAbout &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Controller_SetScreen
@@ -1287,7 +1285,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[d1]"></a>Display_ShowModel</STRONG> (Thumb, 20 bytes, Stack size 8 bytes, display_handler.o(.text.Display_ShowModel))
-<BR><BR>[Stack]<UL><LI>Max Depth = 296<LI>Call Chain = Display_ShowModel &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 96<LI>Call Chain = Display_ShowModel &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[99]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Controller_SetScreen
@@ -1585,7 +1583,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[c6]"></a>Graos_Handle_Pesquisa_Texto</STRONG> (Thumb, 472 bytes, Stack size 96 bytes, graos_handler.o(.text.Graos_Handle_Pesquisa_Texto))
-<BR><BR>[Stack]<UL><LI>Max Depth = 384<LI>Call Chain = Graos_Handle_Pesquisa_Texto &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 216<LI>Call Chain = Graos_Handle_Pesquisa_Texto &rArr; CLI_Printf &rArr; USBD_CDC_ACM_Transmit &rArr; _ux_device_class_cdc_acm_write_run &rArr; _ux_device_stack_transfer_run &rArr; __aeabi_uidivmod
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;CLI_Printf
@@ -1598,7 +1596,7 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[a0]"></a>Graos_UpdateDisplayIfNeeded</STRONG> (Thumb, 392 bytes, Stack size 104 bytes, graos_handler.o(.text.Graos_UpdateDisplayIfNeeded))
-<BR><BR>[Stack]<UL><LI>Max Depth = 392<LI>Call Chain = Graos_UpdateDisplayIfNeeded &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 224<LI>Call Chain = Graos_UpdateDisplayIfNeeded &rArr; CLI_Printf &rArr; USBD_CDC_ACM_Transmit &rArr; _ux_device_class_cdc_acm_write_run &rArr; _ux_device_stack_transfer_run &rArr; __aeabi_uidivmod
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[b8]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;CLI_Printf
@@ -3780,7 +3778,6 @@ Global Symbols
 <BR><BR>[Stack]<UL><LI>Max Depth = 24<LI>Call Chain = __2printf
 </UL>
 <BR>[Called By]<UL><LI><a href="#[9c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;App_Manager_Run_Self_Diagnostics
-<LI><a href="#[9e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_Process
 <LI><a href="#[ea]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Relatorio_Printer
 <LI><a href="#[ab]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Assinatura
 <LI><a href="#[d0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RTC_Handle_Set_Time
@@ -3876,7 +3873,6 @@ Global Symbols
 </UL>
 <BR>[Called By]<UL><LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;App_Manager_Process
 <LI><a href="#[9c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;App_Manager_Run_Self_Diagnostics
-<LI><a href="#[9e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_Process
 <LI><a href="#[a2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DisplayHandler_Process
 <LI><a href="#[d0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RTC_Handle_Set_Time
 <LI><a href="#[cb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;RTC_Handle_Set_Date_And_Time
@@ -4144,7 +4140,7 @@ Local Symbols
 </UL>
 
 <P><STRONG><a name="[a7]"></a>Test_DisplayInfo</STRONG> (Thumb, 96 bytes, Stack size 40 bytes, app_manager.o(.text.Test_DisplayInfo))
-<BR><BR>[Stack]<UL><LI>Max Depth = 328<LI>Call Chain = Test_DisplayInfo &rArr; DWIN_Driver_WriteString
+<BR><BR>[Stack]<UL><LI>Max Depth = 128<LI>Call Chain = Test_DisplayInfo &rArr; DWIN_Driver_WriteString
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_WriteString
 <LI><a href="#[9a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;DWIN_Driver_IsTxBusy
