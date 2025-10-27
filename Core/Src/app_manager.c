@@ -1,6 +1,6 @@
 /*******************************************************************************
  * @file        app_manager.c
- * @brief       Gerenciador central da aplicação (Arquitetura V8.7 - Refatorado)
+ * @brief       Gerenciador central da aplicação 
  * @version     8.7
  * @author      Gabriel Agune
  * @details     Implementa o orquestrador principal da aplicação. Gerencia
@@ -81,6 +81,7 @@ void App_Manager_Process(void) {
     switch (s_current_state) {
         case STATE_ACTIVE:
             Task_Handle_High_Frequency_Polling();
+						Graos_UpdateDisplayIfNeeded();
             Medicao_Process();
             DisplayHandler_Process();
             Gerenciador_Config_Run_FSM();
@@ -143,7 +144,7 @@ bool App_Manager_Run_Self_Diagnostics(uint8_t return_tela) {
         const DiagnosticStep_t* step = &s_diagnostic_steps[i];
 
         printf("Diagnostico: %s\r\n", step->description);
-        DWIN_Driver_SetScreen(step->screen_id);
+        Controller_SetScreen(step->screen_id);
         DWIN_TX_Pump(); // Garante que o comando seja enviado
         
         // Espera o tempo de exibição da tela
@@ -162,7 +163,7 @@ bool App_Manager_Run_Self_Diagnostics(uint8_t return_tela) {
     }
 
     printf(">>> AUTODIAGNOSTICO COMPLETO <<<\r\n\r\n");
-    DWIN_Driver_SetScreen(return_tela);
+    Controller_SetScreen(return_tela);
     DWIN_TX_Pump();
     
     return true;
@@ -194,7 +195,6 @@ static void EnterStopMode(void) {
     ux_device_stack_uninitialize();
 
     // 3. Desinicializa o sistema USBX (libera o memory pool)
-    //    ESTE É O PASSO CRÍTICO QUE FALTAVA.
     ux_system_uninitialize();
 
     // 4. Desliga o hardware da periférica USB
@@ -234,7 +234,7 @@ static void HandleWakeUpSequence(void) {
     HAL_GPIO_WritePin(DISPLAY_PWR_CTRL_GPIO_Port, DISPLAY_PWR_CTRL_Pin, GPIO_PIN_RESET);
     HAL_Delay(800);
 
-    DWIN_Driver_SetScreen(TELA_CONFIRM_WAKEUP);
+    Controller_SetScreen(TELA_CONFIRM_WAKEUP);
 
     // Garante que o comando para mudar de tela seja enviado
     while (DWIN_Driver_IsTxBusy()) {
@@ -300,7 +300,7 @@ static bool Test_Termometro(void) {
 static bool Test_EEPROM(void) {
     if (!EEPROM_Driver_IsReady()) {
 
-        DWIN_Driver_SetScreen(MSG_ERROR); // Tela de erro genérica
+        Controller_SetScreen(MSG_ERROR); // Tela de erro genérica
         DWIN_TX_Pump();
         return false;
     }

@@ -17,8 +17,9 @@ const char Linha[] = "--------------------------------\n\r";
 void Who_am_i(void)
 {
     // MOVIDO: de global para local. A memória é alocada na stack e liberada ao sair.
-    Config_Aplicacao_t config_snapshot;
-	  Gerenciador_Config_Get_Config_Snapshot(&config_snapshot);
+		char serial[17];
+    Gerenciador_Config_Get_Serial(
+		serial, sizeof(serial));
 		
     CLI_Printf(Dupla);
     CLI_Printf("         G620_Teste_Gab\n\r");
@@ -27,7 +28,7 @@ void Who_am_i(void)
     CLI_Printf("CPU      =           STM32C071RB\n\r");
     CLI_Printf("Firmware = %21s\r\n", FIRMWARE);
     CLI_Printf("Hardware = %21s\r\n", HARDWARE);
-    CLI_Printf("Serial   = %21s\r\n", config_snapshot.nr_serial);
+    CLI_Printf("Serial   = %21s\r\n", serial);
     CLI_Printf(Linha);
     CLI_Printf("Medidas  = %21d\n\r", 22);
     CLI_Printf(Ejeta);
@@ -37,7 +38,6 @@ void Assinatura(void)
 {
     uint8_t hours, minutes, seconds;
     uint8_t day, month, year;
-    // CORRIGIDO: Adicionado o 4º argumento dummy para a chamada de função.
     char weekday_dummy[4];
 
     printf("\n\r\n\r");

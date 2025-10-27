@@ -44,8 +44,8 @@ typedef struct { const char* name; void (*handler)(char* args); } cli_command_t;
 static const cli_command_t s_command_table[] = {
     { "HELP", Cmd_Help }, { "?", Cmd_Help }, { "DWIN", Cmd_Dwin },
 		{ "SETTIME", Cmd_SetTime }, { "SETDATE", Cmd_SetDate }, { "DATE", Cmd_Date },
-		{"PESO", Cmd_GetPeso}, {"TEMP", Cmd_GetTemp}, {"FREQ", Cmd_GetFreq},
-		{ "SERVICE", Cmd_Service }, 
+		{ "PESO", Cmd_GetPeso}, {"TEMP", Cmd_GetTemp}, {"FREQ", Cmd_GetFreq},
+		{ "SERVICE", Cmd_Service }, { "WHO_AM_I", Cmd_WhoAmI },
 };
 static const size_t NUM_COMMANDS = sizeof(s_command_table) / sizeof(s_command_table[0]);
 

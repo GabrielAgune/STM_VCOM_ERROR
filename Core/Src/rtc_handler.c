@@ -1,5 +1,6 @@
 
 #include "rtc_handler.h"
+#include "controller.h"
 
 //================================================================================
 // Definições Internas
@@ -27,43 +28,55 @@ typedef struct {
 
 static RtcSetResult_t rtc_handle_set_date_and_time_logic(const uint8_t* dwin_data, uint16_t len, RtcData_t* out_data);
 static RtcSetResult_t rtc_handle_set_time_logic(const uint8_t* dwin_data, uint16_t len, RtcData_t* out_data);
-static void rtc_update_display(const RtcData_t* data);
 
 //================================================================================
 // Funções Públicas (Processadores de Evento)
 //================================================================================
 
-void RTC_Handle_Set_Time(const uint8_t* dwin_data, uint16_t len)
+void RTC_Handle_Set_Time(const uint8_t* dwin_data, uint16_t len, uint16_t received_value)
 {
-    RtcData_t parsed_data;
+		if (received_value == 0x0050)
+		{
+				Controller_SetScreen(TELA_SET_JUST_TIME);
+		}
+		else
+		{
+				RtcData_t parsed_data;
 
-    // 1. Chama a NOVA função de lógica que só mexe na hora
-    RtcSetResult_t result = rtc_handle_set_time_logic(dwin_data, len, &parsed_data);
+				// 1. Chama a NOVA função de lógica que só mexe na hora
+				RtcSetResult_t result = rtc_handle_set_time_logic(dwin_data, len, &parsed_data);
 
-    // 2. Age sobre o resultado
-    if (result == RTC_SET_OK) {
-        printf("RTC Handler: HORA atualizada com sucesso. Atualizando display.\r\n");
-        rtc_update_display(&parsed_data);
-    } else {
-        printf("RTC Handler: Falha ao atualizar HORA. Nenhum feedback para o usuario.\r\n");
-    }
+				// 2. Age sobre o resultado
+				if (result == RTC_SET_OK) {
+						printf("RTC Handler: HORA atualizada com sucesso. Atualizando display.\r\n");
+				} else {
+						printf("RTC Handler: Falha ao atualizar HORA. Nenhum feedback para o usuario.\r\n");
+				}
+		}
 }
 
-void RTC_Handle_Set_Date_And_Time(const uint8_t* dwin_data, uint16_t len)
+void RTC_Handle_Set_Date_And_Time(const uint8_t* dwin_data, uint16_t len, uint16_t received_value)
 {
-    RtcData_t parsed_data;
-		
-    RtcSetResult_t result = rtc_handle_set_date_and_time_logic(dwin_data, len, &parsed_data);
 
-    if (result == RTC_SET_OK)
-    {
-        printf("RTC Handler: RTC atualizado com sucesso. Atualizando display.\r\n");
-        rtc_update_display(&parsed_data);
-    }
-    else
-    {
-        printf("RTC Handler: Falha ao atualizar RTC. Nenhum feedback para o usuario.\r\n");
-    }
+		if (received_value == 0x0050)
+		{
+				Controller_SetScreen(TELA_ADJUST_TIME);
+		}
+		else
+		{
+				RtcData_t parsed_data;
+		
+				RtcSetResult_t result = rtc_handle_set_date_and_time_logic(dwin_data, len, &parsed_data);
+
+				if (result == RTC_SET_OK)
+				{
+						printf("RTC Handler: RTC atualizado com sucesso. Atualizando display.\r\n");
+				}
+				else
+				{
+						printf("RTC Handler: Falha ao atualizar RTC. Nenhum feedback para o usuario.\r\n");
+				}
+		}
 }
 
 
@@ -161,18 +174,4 @@ static RtcSetResult_t rtc_handle_set_time_logic(const uint8_t* dwin_data, uint16
     out_data->hour = h; out_data->minute = min; out_data->second = s;
 
     return RTC_SET_OK;
-}
-
-/**
- * @brief Função dedicada a enviar os dados de data/hora para o display
- */
-static void rtc_update_display(const RtcData_t* data)
-{
-    char buffer_display[20];
-    
-    snprintf(buffer_display, sizeof(buffer_display), "%02d/%02d/%02d", data->day, data->month, data->year);
-    DWIN_Driver_WriteString(DATA_SISTEMA, buffer_display, strlen(buffer_display));
-
-    snprintf(buffer_display, sizeof(buffer_display), "%02d:%02d:%02d", data->hour, data->minute, data->second);
-    DWIN_Driver_WriteString(HORA_SISTEMA, buffer_display, strlen(buffer_display));
 }

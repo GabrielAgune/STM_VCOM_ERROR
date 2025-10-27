@@ -74,7 +74,7 @@ void Display_StartMeasurementSequence(void) {
         printf("DISPLAY: Iniciando sequencia de medicao...\r\n");
         s_mede_state = MEDE_STATE_ENCHE_CAMARA;
         s_mede_last_tick = HAL_GetTick();
-        DWIN_Driver_SetScreen(MEDE_ENCHE_CAMARA);
+        Controller_SetScreen(MEDE_ENCHE_CAMARA);
     }
 }
 
@@ -101,10 +101,10 @@ void Display_ProcessPrintEvent(uint16_t received_value)
 
         if (casas_decimais == 1) {
             DWIN_Driver_WriteInt(UMIDADE_1_CASA, (int16_t)(dados_medicao.Umidade * 10.0f));
-            DWIN_Driver_SetScreen(MEDE_RESULT_01);
+            Controller_SetScreen(MEDE_RESULT_01);
         } else { // Assume 2
             DWIN_Driver_WriteInt(UMIDADE_2_CASAS, (int16_t)(dados_medicao.Umidade * 100.0f));
-            DWIN_Driver_SetScreen(MEDE_RESULT_02);
+            Controller_SetScreen(MEDE_RESULT_02);
         }
     }
     else // Valor para "imprimir relatório físico"
@@ -120,7 +120,7 @@ void Display_SetRepeticoes(uint16_t received_value)
         uint16_t atual = Gerenciador_Config_Get_NR_Repetition();
         sprintf(buffer, "Atual NR_Repetition: %u", atual);
         DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
-        DWIN_Driver_SetScreen(TELA_SETUP_REPETICOES);
+        Controller_SetScreen(TELA_SETUP_REPETICOES);
     } else {
         Gerenciador_Config_Set_NR_Repetitions(received_value);
         sprintf(buffer, "Novo NR_Repetition: %u", received_value);
@@ -135,7 +135,7 @@ void Display_SetDecimals(uint16_t received_value)
         uint16_t atual = Gerenciador_Config_Get_NR_Decimals();
         sprintf(buffer, "Atual NR_Decimals: %u", atual);
         DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
-        DWIN_Driver_SetScreen(TELA_SET_DECIMALS);
+        Controller_SetScreen(TELA_SET_DECIMALS);
     } else {
         Gerenciador_Config_Set_NR_Decimals(received_value);
         sprintf(buffer, "Novo NR_Decimals: %u", received_value);
@@ -151,7 +151,7 @@ void Display_SetUser(const uint8_t* dwin_data, uint16_t len, uint16_t received_v
         Gerenciador_Config_Get_Usuario(nome_atual, sizeof(nome_atual));
         sprintf(buffer_display, "Atual Usuario: %s", nome_atual);
         DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
-        DWIN_Driver_SetScreen(TELA_USER);
+        Controller_SetScreen(TELA_USER);
     } else {
         char novo_nome[21] = {0};
         const uint8_t* payload = &dwin_data[6];
@@ -173,7 +173,7 @@ void Display_SetCompany(const uint8_t* dwin_data, uint16_t len, uint16_t receive
         Gerenciador_Config_Get_Company(empresa_atual, sizeof(empresa_atual));
         sprintf(buffer_display, "Atual Empresa: %s", empresa_atual);
         DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
-        DWIN_Driver_SetScreen(TELA_COMPANY);
+        Controller_SetScreen(TELA_COMPANY);
     } else {
         char nova_empresa[21] = {0};
         const uint8_t* payload = &dwin_data[6];
@@ -190,19 +190,19 @@ void Display_SetCompany(const uint8_t* dwin_data, uint16_t len, uint16_t receive
 void Display_Adj_Capa(uint16_t received_value)
 {
     DWIN_Driver_WriteString(VP_MESSAGES, "AdjustFrequency: 3000.0KHz+/-2.0", strlen("AdjustFrequency: 3000.0KHz+/-2.0"));
-    DWIN_Driver_SetScreen(TELA_ADJUST_CAPA); // Corrigido para ir para a tela correta
+    Controller_SetScreen(TELA_ADJUST_CAPA); // Corrigido para ir para a tela correta
 }
 
 void Display_ShowAbout(void)
 {
     DWIN_Driver_WriteString(VP_MESSAGES, "G620_Teste_Gab", strlen("G620_Teste_Gab"));
-    DWIN_Driver_SetScreen(TELA_ABOUT_SYSTEM);
+    Controller_SetScreen(TELA_ABOUT_SYSTEM);
 }
 
 void Display_ShowModel(void)
 {
     DWIN_Driver_WriteString(VP_MESSAGES, "G620_Teste_Gab", strlen("G620_Teste_Gab"));
-    DWIN_Driver_SetScreen(TELA_MODEL_OEM);
+    Controller_SetScreen(TELA_MODEL_OEM);
 }
 
 void Display_Preset(uint16_t received_value)
@@ -210,7 +210,7 @@ void Display_Preset(uint16_t received_value)
     if (received_value == DWIN_VP_ENTRADA_SERVICO)
     {
         DWIN_Driver_WriteString(VP_MESSAGES, "Preset redefine os ajustes!", strlen("Preset redefine os ajustes!"));
-        DWIN_Driver_SetScreen(TELA_PRESET_PRODUCT);
+        Controller_SetScreen(TELA_PRESET_PRODUCT);
     }
     else
     {
@@ -225,7 +225,7 @@ void Display_Set_Serial(const uint8_t* dwin_data, uint16_t len, uint16_t receive
 
     if (received_value == DWIN_VP_ENTRADA_SERVICO)
     {
-        DWIN_Driver_SetScreen(TELA_SET_SERIAL);
+        Controller_SetScreen(TELA_SET_SERIAL);
         char serial_atual[17] = {0};
         Gerenciador_Config_Get_Serial(serial_atual, sizeof(serial_atual));
         sprintf(buffer_display, "%s", serial_atual);
@@ -278,23 +278,23 @@ static void ProcessMeasurementSequenceFSM(void) {
     switch (s_mede_state) {
         case MEDE_STATE_ENCHE_CAMARA:
             s_mede_state = MEDE_STATE_AJUSTANDO;
-            DWIN_Driver_SetScreen(MEDE_AJUSTANDO);
+            Controller_SetScreen(MEDE_AJUSTANDO);
             break;
         case MEDE_STATE_AJUSTANDO:
             s_mede_state = MEDE_STATE_RASPA_CAMARA;
-            DWIN_Driver_SetScreen(MEDE_RASPA_CAMARA);
+            Controller_SetScreen(MEDE_RASPA_CAMARA);
             break;
         case MEDE_STATE_RASPA_CAMARA:
             s_mede_state = MEDE_STATE_PESO_AMOSTRA;
-            DWIN_Driver_SetScreen(MEDE_PESO_AMOSTRA);
+            Controller_SetScreen(MEDE_PESO_AMOSTRA);
             break;
         case MEDE_STATE_PESO_AMOSTRA:
             s_mede_state = MEDE_STATE_TEMP_SAMPLE;
-            DWIN_Driver_SetScreen(MEDE_TEMP_SAMPLE);
+            Controller_SetScreen(MEDE_TEMP_SAMPLE);
             break;
         case MEDE_STATE_TEMP_SAMPLE:
             s_mede_state = MEDE_STATE_UMIDADE;
-            DWIN_Driver_SetScreen(MEDE_UMIDADE);
+            Controller_SetScreen(MEDE_UMIDADE);
             break;
         case MEDE_STATE_UMIDADE:
             s_mede_state = MEDE_STATE_MOSTRA_RESULTADO;
@@ -321,7 +321,7 @@ static void UpdateMonitorScreen(void) {
     s_monitor_last_tick = HAL_GetTick();
 
     uint16_t tela_atual = Controller_GetCurrentScreen();
-    if (tela_atual != TELA_MONITOR_SYSTEM && tela_atual != TELA_ADJUST_CAPA) {
+    if (tela_atual != TELA_MONITOR_SYSTEM && tela_atual != TELA_ADJUST_CAPA) { 
         s_temp_update_counter = 0;
         return;
     }
@@ -359,18 +359,41 @@ static void UpdateClockOnMainScreen(void) {
         return;
     }
     s_clock_last_tick = HAL_GetTick();
-
-    if (Controller_GetCurrentScreen() == PRINCIPAL) {
-        char time_buf[9];
-        char date_buf[9];
-				uint8_t h, m, s, d, mo, y;
-				char weekday_dummy[4];
-				
-        if (RTC_Driver_GetTime(&h, &m, &s) && RTC_Driver_GetDate(&d, &mo, &y, weekday_dummy)) {
-            sprintf(time_buf, "%02d:%02d:%02d", h, m, s);
-            sprintf(date_buf, "%02d/%02d/%02d", d, mo, y);
-            DWIN_Driver_WriteString(HORA_SISTEMA, time_buf, 8);
-            DWIN_Driver_WriteString(DATA_SISTEMA, date_buf, 8);
-        }
-    }
+		
+		switch (Controller_GetCurrentScreen())
+		{
+				case PRINCIPAL:
+				case MEDE_RESULT_01:
+				case MEDE_RESULT_02:
+				case TELA_SET_JUST_TIME:
+				case TELA_ABOUT_SYSTEM:
+				case TELA_ADJUST_TIME:
+				{
+						char time_buf[9];
+						char date_buf[9];
+						uint8_t h, m, s, d, mo, y;
+						char weekday_dummy[4];
+						
+						if (RTC_Driver_GetTime(&h, &m, &s) && RTC_Driver_GetDate(&d, &mo, &y, weekday_dummy)) {
+								uint8_t rtc_command[] = {
+										0x5A, 0xA5,                             // Cabeçalho
+										0x0B,                                   // Comprimento
+										0x82,                                   // Comando de escrita
+										(VP_DATA_HORA >> 8) & 0xFF,       // VP MSB
+										VP_DATA_HORA & 0xFF,              // VP LSB
+										y,                                      // Ano
+										mo,                                     // Mês
+										d,                                      // Dia
+										03,
+										h,                                      // Hora
+										m,                                      // Minuto
+										s,                                      // Segundo
+										0x00                                    // Byte reservado
+								};
+								DWIN_Driver_WriteRawBytes(rtc_command, sizeof(rtc_command));
+						}
+				}
+				default:
+						break;
+		}
 }

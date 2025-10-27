@@ -13,8 +13,8 @@
  * @param dwin_data Ponteiro para o buffer de dados brutos DWIN.
  * @param len Comprimento do buffer de dados.
  */
-void RTC_Handle_Set_Time(const uint8_t* dwin_data, uint16_t len);
+void RTC_Handle_Set_Time(const uint8_t* dwin_data, uint16_t len, uint16_t received_value);
 
-void RTC_Handle_Set_Date_And_Time(const uint8_t* dwin_data, uint16_t len);
+void RTC_Handle_Set_Date_And_Time(const uint8_t* dwin_data, uint16_t len, uint16_t received_value);
 
 #endif // RTC_HANDLER_H

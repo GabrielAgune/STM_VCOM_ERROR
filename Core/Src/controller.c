@@ -16,7 +16,7 @@ static int8_t s_indice_grao_selecionado = 0;
 static bool s_em_tela_de_selecao = false;
 static int16_t received_value = 0;
 static uint16_t s_current_screen_id = PRINCIPAL; 
-static void Handle_Escape_Navigation(void);
+static void Handle_Escape_Navigation(uint16_t received_value);
 
 
 //================================================================================
@@ -37,6 +37,7 @@ uint16_t Controller_GetCurrentScreen(void)
 void Controller_SetScreen(uint16_t screen_id)
 {
     s_current_screen_id = screen_id;
+		DWIN_Driver_SetScreen(screen_id);
 }
 
 
@@ -77,7 +78,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						
 						//Menu Configurar
             case SENHA_CONFIG				:		Auth_ProcessLoginEvent(data, len);                                                     break;
-            case SET_TIME						:		RTC_Handle_Set_Time(data, len);                                                        break;
+            case SET_TIME						:		RTC_Handle_Set_Time(data, len, received_value);                                        break;
 						case NR_REPETICOES      :   Display_SetRepeticoes(received_value);                                                 break;
 						case DECIMALS           :   Display_SetDecimals(received_value);                                                   break;
 						case DES_HAB_PRINT      :   Display_SetPrintingEnabled(received_value == 0x01);                                    break;
@@ -89,7 +90,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						
 						//Menu Servico
 						case PRESET_PRODUCT     :   Display_Preset(received_value);                                                        break;
-						case SET_DATE_TIME      :   RTC_Handle_Set_Date_And_Time(data, len);                                               break;
+						case SET_DATE_TIME      :   RTC_Handle_Set_Date_And_Time(data, len, received_value);                               break;
 						case MODEL_OEM          :   Display_ShowModel();                                                                   break;						
 						case ADJUST_SCALE       :                                                                                          break;
 						case ADJUST_TERMO       :                                                                                          break;
@@ -101,7 +102,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						case SYSTEM_BURNIN      :                                                                                          break;
 						
 						case TECLAS							:		Graos_Handle_Navegacao(received_value);           																		 break;
-						case ESCAPE							:		Handle_Escape_Navigation();	Graos_Limpar_Resultados_Pesquisa();		  							     break;
+						case ESCAPE							:		Handle_Escape_Navigation(received_value);	                                  		  							     break;
 						
 						case VP_SEARCH_INPUT    :   Graos_Handle_Pesquisa_Texto(data, len);                                                break;
 						
@@ -116,14 +117,19 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 
 
 
-static void Handle_Escape_Navigation(void)
+static void Handle_Escape_Navigation(uint16_t received_value)
 {
 
-    if (s_current_screen_id != PRINCIPAL) 
+    if (received_value == 0x0051) 
     {
-         Controller_SetScreen(PRINCIPAL); 
-				 DWIN_Driver_SetScreen(TELA_SERVICO);
-         printf("CONTROLLER: Saindo do Monitor -> Tela de Servico.\r\n");
+				 Controller_SetScreen(TELA_SERVICO);
+         printf("CONTROLLER: Tela de Servico.\r\n");
     }
+		else
+		{
+				 Controller_SetScreen(PRINCIPAL);
+         printf("CONTROLLER: Tela Principal.\r\n");
+		}
+		
     
 }

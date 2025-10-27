@@ -18,9 +18,9 @@
  * @note Ajuste os tamanhos conforme capacidade e frequência esperadas.
  */
 
-#define DWIN_RX_BUFFER_SIZE         64  /**< Tamanho do buffer DMA RX. */
+#define DWIN_RX_BUFFER_SIZE        256  /**< Tamanho do buffer DMA RX. */
 #define DWIN_TX_FIFO_SIZE          256  /**< Tamanho do buffer circular software para TX. */
-#define DWIN_TX_DMA_BUFFER_SIZE     64  /**< Tamanho do buffer linear DMA TX. */
+#define DWIN_TX_DMA_BUFFER_SIZE    256  /**< Tamanho do buffer linear DMA TX. */
 
 static const uint8_t CMD_AJUSTAR_BACKLIGHT_10[] = {0x5A, 0xA5, 0x05, 0x82, 0x00, 0x82, 0x0A, 0x00};
 static const uint8_t CMD_AJUSTAR_BACKLIGHT_100[] = {0x5A, 0xA5, 0x05, 0x82, 0x00, 0x82, 0x64, 0x00};
@@ -29,6 +29,7 @@ static const uint8_t CMD_STOP_ANIMATION[] = {0x5A, 0xA5, 0x05, 0x82, 0xF0, 0x00,
 enum
 {
 		//Váriaveis Globais
+		VP_DATA_HORA     = 0x0010,
 		VP_FIRMWARE      = 0x1000,
 		VP_HARDWARE      = 0x1010,
 		VP_FIRM_IHM      = 0x1020,
@@ -135,7 +136,7 @@ enum
 	BOOT_CLOCK            =   6,
 	BOOT_CRIPTO           =   7,
 	
-	PRINCIPAL             = 103,
+	PRINCIPAL             =   8,
 	SYSTEM_STANDBY        =  11,
 	TELA_CONFIRM_WAKEUP   =  99,
 	

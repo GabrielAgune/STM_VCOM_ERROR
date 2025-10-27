@@ -36,4 +36,10 @@ void Graos_Handle_Pesquisa_Texto(const uint8_t* data, uint16_t len);
  */
 void Graos_Handle_Page_Change(void);
 
+/**
+ * @brief (NOVA FUNÇÃO) Chamada pelo loop principal para atualizar o display.
+ * Verifica a flag interna e envia os comandos DWIN necessários se a flag estiver ativa.
+ */
+void Graos_UpdateDisplayIfNeeded(void);
+
 #endif // GRAOS_HANDLER_H

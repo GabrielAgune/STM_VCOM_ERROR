@@ -17,7 +17,7 @@ void RTC_Driver_Init(RTC_HandleTypeDef* hrtc)
     if (sDateCheck.Year < 24) // Se o ano for inválido, define um padrão
     {
         RTC_TimeTypeDef sTime = { .Hours = 0, .Minutes = 0, .Seconds = 0 };
-        RTC_DateTypeDef sDate = { .Date = 26, .Month = RTC_MONTH_SEPTEMBER, .Year = 25, .WeekDay = RTC_WEEKDAY_FRIDAY };
+        RTC_DateTypeDef sDate = { .Date = 23, .Month = RTC_MONTH_OCTOBER, .Year = 25, .WeekDay = RTC_WEEKDAY_FRIDAY };
         HAL_RTC_SetTime(s_hrtc, &sTime, RTC_FORMAT_BIN);
         HAL_RTC_SetDate(s_hrtc, &sDate, RTC_FORMAT_BIN);
     }
