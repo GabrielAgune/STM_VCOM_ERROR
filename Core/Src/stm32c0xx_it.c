@@ -58,6 +58,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim14;
 extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
@@ -157,7 +158,7 @@ void EXTI4_15_IRQHandler(void)
   /* USER CODE END EXTI4_15_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(SINAL_DISPLAY_Pin);
   /* USER CODE BEGIN EXTI4_15_IRQn 1 */
-
+  HAL_GPIO_EXTI_IRQHandler(AD_DOUT_BAL_Pin);
   /* USER CODE END EXTI4_15_IRQn 1 */
 }
 
@@ -218,6 +219,27 @@ void TIM14_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles I2C1 interrupt (combined with EXTI 23).
+  */
+void I2C1_IRQHandler(void)
+{
+  /* USER CODE BEGIN I2C1_IRQn 0 */
+
+  /* USER CODE END I2C1_IRQn 0 */
+  if (hi2c1.Instance->ISR & (I2C_FLAG_BERR | I2C_FLAG_ARLO | I2C_FLAG_OVR))
+  {
+    HAL_I2C_ER_IRQHandler(&hi2c1);
+  }
+  else
+  {
+    HAL_I2C_EV_IRQHandler(&hi2c1);
+  }
+  /* USER CODE BEGIN I2C1_IRQn 1 */
+
+  /* USER CODE END I2C1_IRQn 1 */
+}
+
+/**
   * @brief This function handles USART2 interrupt.
   */
 void USART2_IRQHandler(void)
@@ -236,7 +258,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart->Instance == USART2) // DWIN (UART2)
     {
-        DWIN_Driver_HandleTxCplt(huart); // (Avisa ao driver DWIN que o DMA TX est� livre)
+        DWIN_Driver_HandleTxCplt(huart); // (Avisa ao driver DWIN que o DMA TX est livre)
     }
 }
 

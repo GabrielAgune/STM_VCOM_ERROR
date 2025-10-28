@@ -44,17 +44,17 @@ void Auth_ProcessLoginEvent(const uint8_t* dwin_data, uint16_t len)
     switch (result)
     {
         case AUTH_RESULT_OK:
-            DWIN_Driver_SetScreen(TELA_CONFIGURAR);
+            Controller_SetScreen(TELA_CONFIGURAR);
             break;
         case AUTH_RESULT_FAIL:
-            DWIN_Driver_SetScreen(SENHA_ERRADA);
+            Controller_SetScreen(SENHA_ERRADA);
             break;
 				case AUTH_RESULT_SERVICE:
-						DWIN_Driver_SetScreen(TELA_SERVICO);
+						Controller_SetScreen(TELA_SERVICO);
 						break;
         case AUTH_RESULT_ERROR:
         default:
-            DWIN_Driver_SetScreen(MSG_ERROR);
+            Controller_SetScreen(MSG_ERROR);
             break;
     }
 }
@@ -68,20 +68,20 @@ void Auth_ProcessSetPasswordEvent(const uint8_t* dwin_data, uint16_t len)
     switch (result)
     {
         case AUTH_RESULT_OK:
-            DWIN_Driver_SetScreen(TELA_CONFIGURAR);
+            Controller_SetScreen(TELA_CONFIGURAR);
             break;
         case AUTH_RESULT_PENDING_CONFIRMATION:
-            DWIN_Driver_SetScreen(TELA_SET_PASS_AGAIN);
+            Controller_SetScreen(TELA_SET_PASS_AGAIN);
             break;
         case AUTH_RESULT_PASSWORD_TOO_SHORT:
-            DWIN_Driver_SetScreen(SENHA_MIN_4_CARAC);
+            Controller_SetScreen(SENHA_MIN_4_CARAC);
             break;
         case AUTH_RESULT_PASSWORD_MISMATCH:
-            DWIN_Driver_SetScreen(SENHAS_DIFERENTES);
+            Controller_SetScreen(SENHAS_DIFERENTES);
             break;
         case AUTH_RESULT_ERROR:
         default:
-            DWIN_Driver_SetScreen(MSG_ERROR);
+            Controller_SetScreen(MSG_ERROR);
             break;
     }
 }

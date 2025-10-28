@@ -5,11 +5,11 @@
 #include <stdbool.h>
 
 
-static int32_t cal_zero_adc = 0; // ADC do ponto de 0 g da TABELA de calibração
+static int32_t cal_zero_adc = 0; // ADC do ponto de 0 g da TABELA de calibrao
 volatile bool g_ads_data_ready = false;
 
-// --- DEFINIÇÃO DA TABELA DE CALIBRAÇÃO ---
-// Os valores de adc_value devem ser preenchidos por você com a rotina de calibração
+// --- DEFINIO DA TABELA DE CALIBRAO ---
+// Os valores de adc_value devem ser preenchidos por voc com a rotina de calibrao
 CalPoint_t cal_points[NUM_CAL_POINTS] = {
     {0.0f, 235469},
     {50.0f, 546061},
@@ -17,10 +17,10 @@ CalPoint_t cal_points[NUM_CAL_POINTS] = {
     {200.0f, 1477409}
 };
 
-// --- Variáveis Estáticas ---
+// --- Variveis Estticas ---
 static int32_t adc_offset = 0;
 
-// --- Funções Privadas ---
+// --- Funes Privadas ---
 static void delay_us(uint32_t us) {
     for(volatile uint32_t i = 0; i < us * 8; i++);
 }
@@ -32,7 +32,7 @@ static void sort_three(int32_t *a, int32_t *b, int32_t *c) {
     if (*a > *b) { temp = *a; *a = *b; *b = temp; }
 }
 
-// --- Implementação das Funções Públicas ---
+// --- Implementao das Funes Pblicas ---
 
 void Drv_ADS1232_DRDY_Callback(void)
 {
@@ -49,10 +49,10 @@ void ADS1232_Init(void) {
 int32_t ADS1232_Read(void) {
     uint32_t data = 0;
 
-    // >>>>> CORREÇÃO CRÍTICA: __disable_irq() REMOVIDO <<<<<
-    // Desabilitar interrupções aqui é o que quebra a comunicação USB.
-    // O risco de uma interrupção ocorrer durante esta leitura de poucos
-    // microssegundos é baixo e aceitável para não bloquear todo o sistema.
+    // >>>>> CORREO CRTICA: __disable_irq() REMOVIDO <<<<<
+    // Desabilitar interrupes aqui  o que quebra a comunicao USB.
+    // O risco de uma interrupo ocorrer durante esta leitura de poucos
+    // microssegundos  baixo e aceitvel para no bloquear todo o sistema.
 
     for(int i = 0; i < 24; i++) {
         HAL_GPIO_WritePin(AD_SCLK_BAL_GPIO_Port, AD_SCLK_BAL_Pin, GPIO_PIN_SET);
@@ -66,7 +66,7 @@ int32_t ADS1232_Read(void) {
     delay_us(1);
     HAL_GPIO_WritePin(AD_SCLK_BAL_GPIO_Port, AD_SCLK_BAL_Pin, GPIO_PIN_RESET);
 
-    // >>>>> CORREÇÃO CRÍTICA: __enable_irq() REMOVIDO <<<<<
+    // >>>>> CORREO CRTICA: __enable_irq() REMOVIDO <<<<<
 
     if (data & 0x800000) data |= 0xFF000000;
     return (int32_t)data;
@@ -105,12 +105,12 @@ int32_t ADS1232_Tare(void) {
 
 float ADS1232_ConvertToGrams(int32_t raw_value)
 {
-    // 1) Leitura líquida: remove a tara medida (adc_offset)
-    // 2) Reancora na curva de calibração somando o ADC de 0 g da tabela
-    //    => efetivamente "move" a leitura atual para o mesmo referencial da calibração
+    // 1) Leitura lquida: remove a tara medida (adc_offset)
+    // 2) Reancora na curva de calibrao somando o ADC de 0 g da tabela
+    //    => efetivamente "move" a leitura atual para o mesmo referencial da calibrao
     int32_t eff_adc = (raw_value - adc_offset) + cal_zero_adc;
 
-    // 3) Interpolação linear no segmento correspondente
+    // 3) Interpolao linear no segmento correspondente
     for (int i = 0; i < NUM_CAL_POINTS - 1; i++) {
         int32_t x1 = cal_points[i].adc_value;
         int32_t x2 = cal_points[i+1].adc_value;
@@ -124,7 +124,7 @@ float ADS1232_ConvertToGrams(int32_t raw_value)
         }
     }
 
-    // 4) Extrapolação linear (para cima e para baixo) com os extremos CORRETAMENTE
+    // 4) Extrapolao linear (para cima e para baixo) com os extremos CORRETAMENTE
     if (NUM_CAL_POINTS >= 2) {
         // abaixo do menor ponto
         if (eff_adc < cal_points[0].adc_value) {

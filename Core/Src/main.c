@@ -59,6 +59,7 @@ uint8_t usb_tx_buffer[128];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */

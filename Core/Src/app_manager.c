@@ -81,7 +81,6 @@ void App_Manager_Process(void) {
     switch (s_current_state) {
         case STATE_ACTIVE:
             Task_Handle_High_Frequency_Polling();
-						Graos_UpdateDisplayIfNeeded();
             Medicao_Process();
             DisplayHandler_Process();
             Gerenciador_Config_Run_FSM();

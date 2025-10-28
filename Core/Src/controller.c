@@ -90,7 +90,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						
 						//Menu Servico
 						case PRESET_PRODUCT     :   Display_Preset(received_value);                                                        break;
-						case SET_DATE_TIME      :   RTC_Handle_Set_Date_And_Time(data, len, received_value);                               break;
+						case SET_DATE_TIME      :   RTC_Handle_Set_Date_And_Time(data, len, received_value);                      break;
 						case MODEL_OEM          :   Display_ShowModel();                                                                   break;						
 						case ADJUST_SCALE       :                                                                                          break;
 						case ADJUST_TERMO       :                                                                                          break;
