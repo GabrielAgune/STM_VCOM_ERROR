@@ -109,6 +109,23 @@ void Carregar_Configuracao_Padrao(void);
  */
 void Gerenciador_Config_Run_FSM(void);
 
+
+/**
+ * @brief Salva a configurao atual do cache na EEPROM de forma bloqueante.
+ * @return true se o salvamento for bem-sucedido, false caso contrrio.
+ */
+bool Gerenciador_Config_Salvar_Agora(void);
+
+/**
+ * @brief Sinaliza que a configurao em cache foi modificada e precisa ser salva.
+ */
+void Gerenciador_Config_Marcar_Como_Pendente(void);
+
+/**
+ * @brief Verifica se h configuraes pendentes para salvar.
+ * @return true se h dados para salvar, false caso contrrio.
+ */
+bool Gerenciador_Config_Ha_Pendencias(void);
 // --- Funções "Get" e "Set" (a interface para o resto da aplicação) ---
 
 void Gerenciador_Config_Get_Config_Snapshot(Config_Aplicacao_t* config_out);

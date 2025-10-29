@@ -1,6 +1,6 @@
 /*******************************************************************************
  * @file        dwin_driver.c
- * @brief       Driver no-bloqueante DMA UART para Display DWIN.
+ * @brief       Driver não-bloqueante DMA UART para Display DWIN.
  * @version     Revisado v1.3 (com timestamp e contador de debug)
  ******************************************************************************/
 
@@ -13,7 +13,7 @@
 #define DEBUG_DWIN 1
 
 #if DEBUG_DWIN
-// NOVO: Adicionado timestamp [HAL_GetTick()] a cada log para anlise de tempo.
+// NOVO: Adicionado timestamp [HAL_GetTick()] a cada log para análise de tempo.
 // O formato %010lu garante alinhamento visual dos logs.
 #define DWIN_LOG(fmt, ...) printf("[%010u] " fmt, HAL_GetTick(), ##__VA_ARGS__)
 #else
@@ -24,7 +24,7 @@
 #define DWIN_RX_PACKET_TIMEOUT_MS  20
 #define DWIN_RX_ERROR_COOLDOWN_MS  100
 
-// Variveis estticas privadas
+// Variáveis estáticas privadas
 static UART_HandleTypeDef* s_huart = NULL;
 static dwin_rx_callback_t s_rx_callback = NULL;
 
@@ -119,9 +119,9 @@ void DWIN_Driver_Process(void)
     // Copiar buffer para salvaguarda
     uint8_t local_buffer[DWIN_RX_BUFFER_SIZE];
     uint16_t local_len;
-    uint32_t packet_id; // Para capturar o nmero do pacote atomicamente
+    uint32_t packet_id; // Para capturar o número do pacote atomicamente
 
-    // A interrupo de RX (DMA/Idle) modifica s_received_len e s_rx_pending_data.
+    // A interrupção de RX (DMA/Idle) modifica s_received_len e s_rx_pending_data.
     // Protegemos esta leitura para garantir atomicidade.
     HAL_NVIC_DisableIRQ(USART2_IRQn);
     HAL_NVIC_DisableIRQ(DMA1_Channel1_IRQn);
@@ -141,13 +141,13 @@ void DWIN_Driver_Process(void)
     DWIN_LOG("[DWIN RX #%u] Pacote recebido (len=%u): ", packet_id, local_len);
     for (uint16_t i = 0u; i < local_len; i++)
     {
-        // A macro DWIN_LOG j adiciona o timestamp, ento usamos printf para os bytes.
+        // A macro DWIN_LOG já adiciona o timestamp, então usamos printf para os bytes.
         printf("%02X ", local_buffer[i]);
     }
     printf("\r\n");
 
 
-    // Filtro rpido ACK padro "OK"
+    // Filtro rápido ACK padrão "OK"
     if ((local_len == 6u) &&
         (local_buffer[0] == 0x5A) && (local_buffer[1] == 0xA5) &&
         (local_buffer[2] == 0x03) && (local_buffer[3] == 0x82) &&
@@ -157,7 +157,7 @@ void DWIN_Driver_Process(void)
         return;
     }
 
-    // Validao pacote bsico
+    // Validação pacote básico
     if ((local_len >= 4u) &&
         (local_buffer[0] == 0x5A) && (local_buffer[1] == 0xA5))
     {
@@ -190,8 +190,8 @@ void DWIN_TX_Pump(void)
         return;
     }
 
-    // A interrupo de TX Cplt (DMA) modifica s_dma_tx_busy.
-    // O loop principal chama esta funo. Precisamos proteger.
+    // A interrupção de TX Cplt (DMA) modifica s_dma_tx_busy.
+    // O loop principal chama esta função. Precisamos proteger.
     HAL_NVIC_DisableIRQ(USART2_IRQn);
     HAL_NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
 
@@ -225,8 +225,8 @@ static bool DWIN_TX_Queue_Send_Bytes(const uint8_t* data, uint16_t size)
 {
     if ((data == NULL) || (size == 0u)) { return false; }
 
-    // O loop principal e as interrupes podem chamar funes que usam este mtodo.
-    // Protegemos o acesso ao FIFO de transmisso.
+    // O loop principal e as interrupções podem chamar funções que usam este método.
+    // Protegemos o acesso ao FIFO de transmissão.
     HAL_NVIC_DisableIRQ(USART2_IRQn);
     HAL_NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
 
@@ -325,10 +325,10 @@ bool DWIN_Driver_WriteString(uint16_t vp_address, const char* text, uint16_t max
 
     uint8_t temp_frame_buffer[sizeof(s_tx_dma_buffer)];
 
-    // 3. Construir o cabealho (Header e Comando)
+    // 3. Construir o cabeçalho (Header e Comando)
     temp_frame_buffer[0] = 0x5A;
     temp_frame_buffer[1] = 0xA5;
-    temp_frame_buffer[2] = frame_payload_len; // Envia o novo tamanho (j somado +2)
+    temp_frame_buffer[2] = frame_payload_len; // Envia o novo tamanho (já somado +2)
     temp_frame_buffer[3] = 0x82; // Comando de escrita
     temp_frame_buffer[4] = (uint8_t)(vp_address >> 8);
     temp_frame_buffer[5] = (uint8_t)(vp_address & 0xFF);
@@ -336,11 +336,11 @@ bool DWIN_Driver_WriteString(uint16_t vp_address, const char* text, uint16_t max
     // 4. Copiar a string
     memcpy(&temp_frame_buffer[6], text, text_len);
 
-    // 5. Adicionar os terminadores 0xFF 0xFF aps a string
+    // 5. Adicionar os terminadores 0xFF 0xFF após a string
     temp_frame_buffer[6 + text_len] = 0xFF;
     temp_frame_buffer[6 + text_len + 1] = 0xFF;
 
-    // 6. Enviar o frame completo (total_frame_size j est correto)
+    // 6. Enviar o frame completo (total_frame_size já está correto)
     return DWIN_TX_Queue_Send_Bytes(temp_frame_buffer, total_frame_size);
 }
 bool DWIN_Driver_WriteRawBytes(const uint8_t* data, uint16_t size)
@@ -360,7 +360,7 @@ uint32_t DWIN_Driver_GetRxPacketCounter(void)
 //------------------------------------------------------------------------------
 // Callbacks de ISR (HAL)
 /**
- * @brief Callback de concluso da transmisso via DMA UART (ISR context).
+ * @brief Callback de conclusão da transmissão via DMA UART (ISR context).
  */
 void DWIN_Driver_HandleTxCplt(UART_HandleTypeDef *huart)
 {
@@ -369,7 +369,7 @@ void DWIN_Driver_HandleTxCplt(UART_HandleTypeDef *huart)
 }
 
 /**
- * @brief Callback de recepo via DMA com Idle Line detect (ISR context).
+ * @brief Callback de recepção via DMA com Idle Line detect (ISR context).
  * @param size Tamanho do pacote recebido neste evento.
  */
 void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size)
@@ -379,9 +379,9 @@ void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size)
         return;
     }
 
-    // Se j houver dados pendentes que o loop principal ainda no processou,
-    // ignoramos este novo pacote para evitar sobreposio. Isso indica que o
-    // sistema est lento para processar.
+    // Se já houver dados pendentes que o loop principal ainda não processou,
+    // ignoramos este novo pacote para evitar sobreposição. Isso indica que o
+    // sistema está lento para processar.
     if (s_rx_pending_data) {
         // Opcional: Logar um aviso de "overrun de software"
         // DWIN_LOG("[WARN] DWIN RX overrun de software!\r\n");
@@ -390,7 +390,7 @@ void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size)
     
     if (size > 0u && size <= DWIN_RX_BUFFER_SIZE)
     {
-        // Incrementa o contador a cada evento de recepo vlido
+        // Incrementa o contador a cada evento de recepção válido
         s_rx_event_counter++;
         s_received_len = size;
         s_rx_pending_data = true;

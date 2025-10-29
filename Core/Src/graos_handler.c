@@ -1,3 +1,15 @@
+/*******************************************************************************
+ * @file        graos_handler.c
+ * @brief       Gerenciador da tela e lógica de seleção de grãos.
+ * @version     3.1 (Arquitetura de Salvamento Síncrono Robusto + Feedback Visual)
+ * @author      Gabriel Agune, Refatorado por Copilot
+ * @details     Este módulo foi atualizado para usar a função de salvamento
+ *              bloqueante `Gerenciador_Config_Salvar_Agora()`. Ao confirmar a
+ *              seleção de um grão (via setas ou pesquisa), o sistema primeiro
+ *              mostra feedback visual "Salvando...", depois salva a configuração
+ *              na EEPROM de forma síncrona. A transição para a próxima tela só
+ *              ocorre se o salvamento for bem-sucedido.
+ ******************************************************************************/
 
 #include "graos_handler.h"
 #include "controller.h"
@@ -48,6 +60,7 @@ static void atualizar_display_grao_selecionado(int16_t indice);
 static void Graos_Update_Page_Indicator(void);
 static GraosNavResult_t graos_handle_navegacao_logic(int16_t tecla);
 static char* stristr(const char* str1, const char* str2);
+static void Executar_Salvamento_Com_Feedback(int16_t indice_grao);
 
 //================================================================================
 // Funções Públicas (Handlers de Evento)
@@ -65,7 +78,7 @@ void Graos_Handle_Entrada_Tela(void)
     // Atualiza também os campos de navegação por setas
     atualizar_display_grao_selecionado(s_indice_grao_selecionado);
 
-    DWIN_Driver_SetScreen(SELECT_GRAO);
+    Controller_SetScreen(SELECT_GRAO);
 }
 
 void Graos_Handle_Navegacao(int16_t tecla)
@@ -79,18 +92,19 @@ void Graos_Handle_Navegacao(int16_t tecla)
             break;
 
         case NAV_RESULT_CONFIRMED:
-            printf("Graos_Handler: Grao (via setas) indice '%d' selecionado. Salvando...\r\n", s_indice_grao_selecionado);
+            printf("Graos_Handler: Grao (via setas) indice '%d' selecionado.\r\n", s_indice_grao_selecionado);
             s_em_tela_de_selecao = false;
-            Gerenciador_Config_Set_Grao_Ativo(s_indice_grao_selecionado);
-            Graos_Limpar_Resultados_Pesquisa();
-            DWIN_Driver_SetScreen(PRINCIPAL);
+            
+            // Executa salvamento com feedback visual
+            Executar_Salvamento_Com_Feedback(s_indice_grao_selecionado);
+						Controller_SetScreen(PRINCIPAL);
             break;
 
         case NAV_RESULT_CANCELLED:
             printf("Graos_Handler: Selecao (via setas) cancelada.\r\n");
             s_em_tela_de_selecao = false;
             Graos_Limpar_Resultados_Pesquisa();
-            DWIN_Driver_SetScreen(PRINCIPAL);
+            Controller_SetScreen(PRINCIPAL);
             break;
         
         default:
@@ -135,13 +149,13 @@ void Graos_Confirmar_Selecao_Pesquisa(uint8_t slot_selecionado)
     if (real_result_index < s_num_resultados_encontrados)
     {
         int16_t indice_final = s_indices_resultados_pesquisa[real_result_index];
-        printf("Selecao via pesquisa confirmada. Indice do Grao: %d. Salvando...\r\n", indice_final);
+        printf("Selecao via pesquisa confirmada. Indice do Grao: %d.\r\n", indice_final);
         
         s_em_tela_de_selecao = false;
         s_indice_grao_selecionado = indice_final; // Atualiza o índice da navegação por setas
-        Gerenciador_Config_Set_Grao_Ativo(indice_final);
-        Graos_Handle_Entrada_Tela();
-        Graos_Limpar_Resultados_Pesquisa();
+
+        // Executa salvamento com feedback visual
+        Executar_Salvamento_Com_Feedback(indice_final);
     }
 }
 
@@ -186,17 +200,15 @@ void Graos_Executar_Pesquisa(const char* termo_pesquisa)
     {
         printf("Pesquisa por '%s' nao encontrou resultados. Exibindo tela de erro.\r\n", termo_pesquisa);
         
-        // ...manda o display para a tela de erro.
-        DWIN_Driver_SetScreen(MSG_ALERTA); 
-				DWIN_Driver_WriteString(VP_MESSAGES, "Nenhum grao encontrado!", sizeof("Nenhum grao encontrado!"));
+        Controller_SetScreen(MSG_ALERTA); 
+		DWIN_Driver_WriteString(VP_MESSAGES, "Nenhum grao encontrado!", sizeof("Nenhum grao encontrado!"));
         // Garante que o comando seja enviado
         while (DWIN_Driver_IsTxBusy()) {
             DWIN_TX_Pump();
         }
     }
-    else // Caso contrário, se encontramos resultados...
+    else 
     {
-        // ...continua com a lógica normal de paginação e exibição.
         s_current_page = 1;
         s_total_pages = (s_num_resultados_encontrados == 0) ? 1 : ((s_num_resultados_encontrados - 1) / MAX_RESULTADOS_POR_PAGINA) + 1;
 
@@ -219,7 +231,7 @@ void Graos_Exibir_Resultados_Pesquisa(void)
             DWIN_Driver_WriteString(s_vps_resultados_nomes[i], " ", 1);
         }
     }
-		DWIN_Driver_SetScreen(TELA_PESQUISA);
+		Controller_SetScreen(TELA_PESQUISA);
 		while (DWIN_Driver_IsTxBusy()) {
         DWIN_TX_Pump();
     }
@@ -241,7 +253,6 @@ static GraosNavResult_t graos_handle_navegacao_logic(int16_t tecla)
 {
     if (!s_em_tela_de_selecao) return NAV_RESULT_NO_CHANGE;
 
-    // Assumindo que Gerenciador_Config_Get_Num_Graos() retorna um uint8_t, ex: 134
     uint8_t total_de_graos = Gerenciador_Config_Get_Num_Graos(); 
     if (total_de_graos == 0) return NAV_RESULT_NO_CHANGE;
 
@@ -249,7 +260,6 @@ static GraosNavResult_t graos_handle_navegacao_logic(int16_t tecla)
     {
         case DWIN_TECLA_SETA_DIR:
             s_indice_grao_selecionado++;
-            // Se o índice passar do último (ex: 134), ele volta para 0.
             if (s_indice_grao_selecionado >= total_de_graos) {
                 s_indice_grao_selecionado = 0;
             }
@@ -258,7 +268,7 @@ static GraosNavResult_t graos_handle_navegacao_logic(int16_t tecla)
         case DWIN_TECLA_SETA_ESQ:
             s_indice_grao_selecionado--;
             if (s_indice_grao_selecionado < 0) {
-                s_indice_grao_selecionado = total_de_graos - 1; // Ex: 134 - 1 = 133
+                s_indice_grao_selecionado = total_de_graos - 1;
             }
             return NAV_RESULT_SELECTION_MOVED;
 
@@ -308,4 +318,52 @@ static char* stristr(const char* str1, const char* str2) {
         p1++;
     }
     return *p2 == 0 ? (char*)r : 0;
+}
+
+/**
+ * @brief NOVA FUNÇÃO: Executa o salvamento com feedback visual ao usuário.
+ * @param indice_grao O índice do grão selecionado a ser salvo.
+ */
+static void Executar_Salvamento_Com_Feedback(int16_t indice_grao)
+{
+    // ============================================================================
+    // PASSO 1: Mostrar tela de "Salvando..." ANTES de bloquear o sistema
+    // ============================================================================
+    Controller_SetScreen(MSG_ALERTA);
+    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando configuracao...", 24);
+    
+    // Força o envio imediato dos comandos para o display
+    while (DWIN_Driver_IsTxBusy()) {
+        DWIN_TX_Pump();
+    }
+    
+    // Pequeno delay para garantir que o display processou a mudança de tela
+    HAL_Delay(100);
+    
+    // ============================================================================
+    // PASSO 2: Atualizar configuração em cache
+    // ============================================================================
+    Gerenciador_Config_Set_Grao_Ativo(indice_grao);
+    
+    // ============================================================================
+    // PASSO 3: Salvar de forma bloqueante (COM PROTEÇÃO DWIN)
+    // ============================================================================
+    // A função Gerenciador_Config_Salvar_Agora() agora desabilita as interrupções
+    // do DWIN durante a escrita na EEPROM, evitando o overflow de RX.
+    if (Gerenciador_Config_Salvar_Agora()) {
+        // SUCESSO: Limpa pesquisa e retorna para tela de seleção atualizada
+        printf("Salvamento bem-sucedido. Voltando para tela de selecao.\r\n");
+        Graos_Limpar_Resultados_Pesquisa();
+        Graos_Handle_Entrada_Tela();
+    } else {
+        // FALHA: Mostra tela de erro
+        printf("ERRO CRITICO: Falha ao salvar a configuracao!\r\n");
+        Controller_SetScreen(MSG_ERROR);
+        DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
+    }
+    
+    // Garante que a última mensagem seja enviada
+    while (DWIN_Driver_IsTxBusy()) {
+        DWIN_TX_Pump();
+    }
 }

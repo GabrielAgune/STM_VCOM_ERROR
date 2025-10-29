@@ -1,4 +1,3 @@
-
 #include "autenticacao_handler.h"
 
 //================================================================================
@@ -29,7 +28,7 @@ static char s_nova_senha_temporaria[MAX_SENHA_LEN + 1];
 //================================================================================
 static AuthResult_t auth_handle_login_logic(const uint8_t* dwin_data, uint16_t len);
 static AuthResult_t auth_handle_set_password_logic(const uint8_t* dwin_data, uint16_t len);
-
+static bool Executar_Salvamento_Senha_Com_Feedback(void);
 
 //================================================================================
 // Funções Públicas (Processadores de Evento)
@@ -68,7 +67,12 @@ void Auth_ProcessSetPasswordEvent(const uint8_t* dwin_data, uint16_t len)
     switch (result)
     {
         case AUTH_RESULT_OK:
-            Controller_SetScreen(TELA_CONFIGURAR);
+            // ============================================================================
+            // PROTEÇÃO DWIN: Salvamento com feedback visual
+            // ============================================================================
+            if (Executar_Salvamento_Senha_Com_Feedback()) {
+                printf("Auth: Senha salva com sucesso.\r\n");
+            }
             break;
         case AUTH_RESULT_PENDING_CONFIRMATION:
             Controller_SetScreen(TELA_SET_PASS_AGAIN);
@@ -167,11 +171,9 @@ static AuthResult_t auth_handle_set_password_logic(const uint8_t* dwin_data, uin
         case ESTADO_SENHA_AGUARDANDO_CONFIRMACAO:
             s_estado_senha_atual = ESTADO_SENHA_OCIOSO;
             if (strcmp(s_nova_senha_temporaria, senha_recebida) == 0) {
-                if (Gerenciador_Config_Set_Senha(s_nova_senha_temporaria)) {
-                    return AUTH_RESULT_OK;
-                } else {
-                    return AUTH_RESULT_ERROR;
-                }
+                // ALTERAÇÃO: Não salva aqui, apenas marca como pendente
+                Gerenciador_Config_Set_Senha(s_nova_senha_temporaria);
+                return AUTH_RESULT_OK; // O salvamento será feito pelo caller
             } else {
                 return AUTH_RESULT_PASSWORD_MISMATCH;
             }
@@ -179,5 +181,40 @@ static AuthResult_t auth_handle_set_password_logic(const uint8_t* dwin_data, uin
         default:
             s_estado_senha_atual = ESTADO_SENHA_OCIOSO;
             return AUTH_RESULT_ERROR;
+    }
+}
+
+/**
+ * @brief NOVA FUNÇÃO: Executa salvamento da senha com feedback visual.
+ * @return true se o salvamento foi bem-sucedido, false caso contrário.
+ */
+static bool Executar_Salvamento_Senha_Com_Feedback(void)
+{
+    
+    Controller_SetScreen(MSG_ALERTA);
+    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando senha...", 17);
+    
+    while (DWIN_Driver_IsTxBusy()) {
+        DWIN_TX_Pump();
+    }
+    HAL_Delay(100);
+    
+    // Salva com proteção DWIN
+    if (Gerenciador_Config_Salvar_Agora()) {
+        Controller_SetScreen(TELA_CONFIGURAR);
+        DWIN_Driver_WriteString(VP_MESSAGES, "Senha alterada!", 15);
+        
+        while (DWIN_Driver_IsTxBusy()) {
+            DWIN_TX_Pump();
+        }
+        return true;
+    } else {
+        Controller_SetScreen(MSG_ERROR);
+        DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
+        
+        while (DWIN_Driver_IsTxBusy()) {
+            DWIN_TX_Pump();
+        }
+        return false;
     }
 }

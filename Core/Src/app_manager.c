@@ -83,8 +83,6 @@ void App_Manager_Process(void) {
             Task_Handle_High_Frequency_Polling();
             Medicao_Process();
             DisplayHandler_Process();
-            Gerenciador_Config_Run_FSM();
-
             if (s_go_to_sleep_request) {
                 s_go_to_sleep_request = false;
                 s_current_state = STATE_STOPPED;

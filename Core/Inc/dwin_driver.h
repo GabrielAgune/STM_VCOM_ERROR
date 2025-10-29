@@ -94,6 +94,7 @@ enum
 	DESCARTA_AMOSTRA  = 0x2060,
 	
 	// Menu Configura??o
+	ENTER_SET_TIME    = 0X3010,
 	SET_TIME          = 0x300F,
 	NR_REPETICOES     = 0x3020,
 	DECIMALS          = 0x3030,

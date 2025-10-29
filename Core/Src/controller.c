@@ -78,6 +78,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						
 						//Menu Configurar
             case SENHA_CONFIG				:		Auth_ProcessLoginEvent(data, len);                                                     break;
+						case ENTER_SET_TIME     :   Controller_SetScreen(TELA_SET_JUST_TIME);                                              break;
             case SET_TIME						:		RTC_Handle_Set_Time(data, len, received_value);                                        break;
 						case NR_REPETICOES      :   Display_SetRepeticoes(received_value);                                                 break;
 						case DECIMALS           :   Display_SetDecimals(received_value);                                                   break;

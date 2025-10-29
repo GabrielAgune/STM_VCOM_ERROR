@@ -23,6 +23,7 @@ bool EEPROM_Driver_IsReady(void);
 
 // --- API de Leitura Bloqueante (Seguro para usar no Boot) ---
 bool EEPROM_Driver_Read_Blocking(uint16_t addr, uint8_t *data, uint16_t size);
+bool EEPROM_Driver_Write_Blocking(uint16_t addr, const uint8_t *data, uint16_t size);
 
 // --- API de Escrita Assncrona (FSM) ---
 bool EEPROM_Driver_IsBusy(void);

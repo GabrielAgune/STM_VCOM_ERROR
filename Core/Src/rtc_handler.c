@@ -35,12 +35,6 @@ static RtcSetResult_t rtc_handle_set_time_logic(const uint8_t* dwin_data, uint16
 
 void RTC_Handle_Set_Time(const uint8_t* dwin_data, uint16_t len, uint16_t received_value)
 {
-		if (received_value == 0x0050)
-		{
-				Controller_SetScreen(TELA_SET_JUST_TIME);
-		}
-		else
-		{
 				RtcData_t parsed_data;
 
 				// 1. Chama a NOVA função de lógica que só mexe na hora
@@ -52,7 +46,6 @@ void RTC_Handle_Set_Time(const uint8_t* dwin_data, uint16_t len, uint16_t receiv
 				} else {
 						printf("RTC Handler: Falha ao atualizar HORA. Nenhum feedback para o usuario.\r\n");
 				}
-		}
 }
 
 void RTC_Handle_Set_Date_And_Time(const uint8_t* dwin_data, uint16_t len, uint16_t received_value)

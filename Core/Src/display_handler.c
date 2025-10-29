@@ -1,11 +1,12 @@
 /*******************************************************************************
  * @file        display_handler.c
  * @brief       Implementação do Handler de Display.
- * @version     2.1 (Completo)
+ * @version     2.2 (Salvamento Protegido com Feedback Visual)
  * @author      Gemini (baseado na refatoração)
  * @details     Contém a máquina de estados não-bloqueante para a sequência
  * de medição e as tarefas de atualização periódica do display.
- * Esta versão inclui a implementação completa de todos os handlers de evento.
+ * VERSÃO 2.2: Todas as funções que salvam na EEPROM agora usam
+ * proteção DWIN e feedback visual ao usuário.
  ******************************************************************************/
 
 #include "display_handler.h"
@@ -53,6 +54,7 @@ static bool s_printing_enabled = true;
 static void UpdateMonitorScreen(void);
 static void UpdateClockOnMainScreen(void);
 static void ProcessMeasurementSequenceFSM(void);
+static bool Executar_Salvamento_Com_Feedback(const char* mensagem_sucesso, uint16_t tela_retorno);
 
 //================================================================================
 // Implementação das Funções Públicas
@@ -122,9 +124,15 @@ void Display_SetRepeticoes(uint16_t received_value)
         DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
         Controller_SetScreen(TELA_SETUP_REPETICOES);
     } else {
+        // ============================================================================
+        // PROTEÇÃO DWIN: Salvamento com feedback visual
+        // ============================================================================
         Gerenciador_Config_Set_NR_Repetitions(received_value);
-        sprintf(buffer, "Novo NR_Repetition: %u", received_value);
-        DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
+        sprintf(buffer, "Repeticoes: %u", received_value);
+        
+        if (Executar_Salvamento_Com_Feedback(buffer, TELA_CONFIGURAR)) {
+            printf("Display: NR_Repetitions salvo com sucesso.\r\n");
+        }
     }
 }
 
@@ -137,9 +145,15 @@ void Display_SetDecimals(uint16_t received_value)
         DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
         Controller_SetScreen(TELA_SET_DECIMALS);
     } else {
+        // ============================================================================
+        // PROTEÇÃO DWIN: Salvamento com feedback visual
+        // ============================================================================
         Gerenciador_Config_Set_NR_Decimals(received_value);
-        sprintf(buffer, "Novo NR_Decimals: %u", received_value);
-        DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
+        sprintf(buffer, "Casas decimais: %u", received_value);
+        
+        if (Executar_Salvamento_Com_Feedback(buffer, TELA_CONFIGURAR)) {
+            printf("Display: NR_Decimals salvo com sucesso.\r\n");
+        }
     }
 }
 
@@ -158,9 +172,15 @@ void Display_SetUser(const uint8_t* dwin_data, uint16_t len, uint16_t received_v
         uint16_t payload_len = len - 6;
 
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, novo_nome, sizeof(novo_nome)) && strlen(novo_nome) > 0) {
+            // ============================================================================
+            // PROTEÇÃO DWIN: Salvamento com feedback visual
+            // ============================================================================
             Gerenciador_Config_Set_Usuario(novo_nome);
-            sprintf(buffer_display, "Novo Usuario: %s", novo_nome);
-            DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
+            sprintf(buffer_display, "Usuario: %s", novo_nome);
+            
+            if (Executar_Salvamento_Com_Feedback(buffer_display, TELA_CONFIGURAR)) {
+                printf("Display: Usuario salvo com sucesso.\r\n");
+            }
         }
     }
 }
@@ -180,9 +200,15 @@ void Display_SetCompany(const uint8_t* dwin_data, uint16_t len, uint16_t receive
         uint16_t payload_len = len - 6;
         
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, nova_empresa, sizeof(nova_empresa)) && strlen(nova_empresa) > 0) {
+            // ============================================================================
+            // PROTEÇÃO DWIN: Salvamento com feedback visual
+            // ============================================================================
             Gerenciador_Config_Set_Company(nova_empresa);
-            sprintf(buffer_display, "Nova Empresa: %s", nova_empresa);
-            DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
+            sprintf(buffer_display, "Empresa: %s", nova_empresa);
+            
+            if (Executar_Salvamento_Com_Feedback(buffer_display, TELA_CONFIGURAR)) {
+                printf("Display: Empresa salva com sucesso.\r\n");
+            }
         }
     }
 }
@@ -190,7 +216,7 @@ void Display_SetCompany(const uint8_t* dwin_data, uint16_t len, uint16_t receive
 void Display_Adj_Capa(uint16_t received_value)
 {
     DWIN_Driver_WriteString(VP_MESSAGES, "AdjustFrequency: 3000.0KHz+/-2.0", strlen("AdjustFrequency: 3000.0KHz+/-2.0"));
-    Controller_SetScreen(TELA_ADJUST_CAPA); // Corrigido para ir para a tela correta
+    Controller_SetScreen(TELA_ADJUST_CAPA);
 }
 
 void Display_ShowAbout(void)
@@ -214,8 +240,14 @@ void Display_Preset(uint16_t received_value)
     }
     else
     {
+        // ============================================================================
+        // PROTEÇÃO DWIN: Salvamento com feedback visual
+        // ============================================================================
         Carregar_Configuracao_Padrao();
-        DWIN_Driver_WriteString(VP_MESSAGES, "Preset Completo!", strlen("Preset Completo!"));
+        
+        if (Executar_Salvamento_Com_Feedback("Preset completo!", TELA_SERVICO)) {
+            printf("Display: Preset executado com sucesso.\r\n");
+        }
     }
 }
 
@@ -234,16 +266,21 @@ void Display_Set_Serial(const uint8_t* dwin_data, uint16_t len, uint16_t receive
     else
     {
         char novo_serial[17] = {0};
-        // O payload de string do DWIN normalmente começa após o header (3 bytes) e o VP (2 bytes)
         const uint8_t* payload = &dwin_data[5]; 
         uint16_t payload_len = len - 5; 
         
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, novo_serial, sizeof(novo_serial)) && strlen(novo_serial) > 0)
         {
+            // ============================================================================
+            // PROTEÇÃO DWIN: Salvamento com feedback visual
+            // ============================================================================
             printf("Display Handler: Recebido novo serial: '%s'\n", novo_serial);
             Gerenciador_Config_Set_Serial(novo_serial);
-            sprintf(buffer_display, "%s", novo_serial);
-            DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
+            sprintf(buffer_display, "Serial: %s", novo_serial);
+            
+            if (Executar_Salvamento_Com_Feedback(buffer_display, TELA_SERVICO)) {
+                printf("Display: Serial salvo com sucesso.\r\n");
+            }
         }
     }
 }
@@ -396,4 +433,53 @@ static void UpdateClockOnMainScreen(void) {
 				default:
 						break;
 		}
+}
+
+/**
+ * @brief NOVA FUNÇÃO CENTRALIZADA: Executa salvamento com feedback visual.
+ * @param mensagem_sucesso Mensagem a ser exibida em caso de sucesso.
+ * @param tela_retorno Tela para a qual retornar após o salvamento.
+ * @return true se o salvamento foi bem-sucedido, false caso contrário.
+ */
+static bool Executar_Salvamento_Com_Feedback(const char* mensagem_sucesso, uint16_t tela_retorno)
+{
+    // ============================================================================
+    // PASSO 1: Mostrar tela de "Salvando..." ANTES de bloquear o sistema
+    // ============================================================================
+    Controller_SetScreen(MSG_ALERTA);
+    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando...", 11);
+    
+    // Força o envio imediato dos comandos para o display
+    while (DWIN_Driver_IsTxBusy()) {
+        DWIN_TX_Pump();
+    }
+    
+    // Pequeno delay para garantir que o display processou a mudança de tela
+    HAL_Delay(100);
+    
+    // ============================================================================
+    // PASSO 2: Salvar de forma bloqueante (COM PROTEÇÃO DWIN)
+    // ============================================================================
+    if (Gerenciador_Config_Salvar_Agora()) {
+        // SUCESSO: Mostra mensagem e retorna para tela especificada
+        Controller_SetScreen(tela_retorno);
+        DWIN_Driver_WriteString(VP_MESSAGES, mensagem_sucesso, strlen(mensagem_sucesso));
+        
+        while (DWIN_Driver_IsTxBusy()) {
+            DWIN_TX_Pump();
+        }
+        
+        return true;
+    } else {
+        // FALHA: Mostra tela de erro
+        printf("ERRO CRITICO: Falha ao salvar configuracao!\r\n");
+        Controller_SetScreen(MSG_ERROR);
+        DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
+        
+        while (DWIN_Driver_IsTxBusy()) {
+            DWIN_TX_Pump();
+        }
+        
+        return false;
+    }
 }

@@ -69,6 +69,62 @@ bool EEPROM_Driver_Read_Blocking(uint16_t addr, uint8_t *data, uint16_t size) {
     return true;
 }
 
+bool EEPROM_Driver_Write_Blocking(uint16_t addr, const uint8_t *data, uint16_t size)
+{
+    if (s_fsm.i2c_handle == NULL) return false;
+
+    const uint8_t max_retries = 3; // Nmero mximo de tentativas
+    const uint32_t timeout_ms = 1000; // Timeout para a operao I2C
+    const uint16_t page_size = 32; // Tamanho da pgina da EEPROM (ex: 24C32/64)
+
+    uint16_t bytes_written = 0;
+    while (bytes_written < size)
+    {
+        // Calcula quanto espao resta na pgina atual
+        uint16_t bytes_to_write_now = page_size - (addr % page_size);
+        
+        // Garante que no vamos escrever alm do buffer de dados
+        if (bytes_to_write_now > (size - bytes_written)) {
+            bytes_to_write_now = size - bytes_written;
+        }
+
+        bool success = false;
+        for (uint8_t retry = 0; retry < max_retries; retry++)
+        {
+            // Espera a EEPROM estar pronta antes de cada tentativa
+            if (HAL_I2C_IsDeviceReady(s_fsm.i2c_handle, EEPROM_I2C_ADDR, 2, 100) != HAL_OK) {
+                HAL_Delay(5); // Pequena espera se o dispositivo estiver ocupado
+                continue;
+            }
+
+            // Tenta escrever o chunk de dados
+            if (HAL_I2C_Mem_Write(s_fsm.i2c_handle, EEPROM_I2C_ADDR, addr, I2C_MEMADD_SIZE_16BIT, (uint8_t*)(data + bytes_written), bytes_to_write_now, timeout_ms) == HAL_OK)
+            {
+                success = true;
+                break; // Sucesso, sai do loop de tentativas
+            }
+            
+            // Se falhou, espera um pouco antes de tentar novamente
+            HAL_Delay(10);
+        }
+
+        if (!success) {
+            printf("EEPROM Write ERROR: Falha persistente ao escrever no endereco 0x%04X\r\n", addr);
+            return false; // Se todas as tentativas falharem, aborta a operao
+        }
+
+        // Atualiza os ponteiros para a prxima iterao
+        bytes_written += bytes_to_write_now;
+        addr += bytes_to_write_now;
+
+        // Aps uma escrita de pgina, a EEPROM fica ocupada por um tempo.
+        // Esperar que ela esteja pronta  a forma mais robusta.
+        while(HAL_I2C_IsDeviceReady(s_fsm.i2c_handle, EEPROM_I2C_ADDR, 5, 100) != HAL_OK);
+    }
+    
+    return true;
+}
+
 bool EEPROM_Driver_IsBusy(void) {
     return (s_fsm.state != FSM_IDLE && s_fsm.state != FSM_FINISHED && s_fsm.state != FSM_ERROR);
 }
