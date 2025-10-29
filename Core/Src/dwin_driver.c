@@ -21,7 +21,7 @@
 #endif
 
 // Tamanhos e constantes
-#define DWIN_RX_PACKET_TIMEOUT_MS  20
+#define DWIN_RX_PACKET_TIMEOUT_MS  50
 #define DWIN_RX_ERROR_COOLDOWN_MS  100
 
 // Variáveis estáticas privadas
