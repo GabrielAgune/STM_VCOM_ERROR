@@ -73,7 +73,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						case DESCARTA_AMOSTRA		:		Display_StartMeasurementSequence();                                                    break;
 						case SELECT_GRAIN				:		Graos_Handle_Entrada_Tela();                                                        	 break;
 						case PRINT							:		Display_ProcessPrintEvent(received_value);                                             break;
-            case OFF								:		App_Manager_Request_Sleep();                                                           break;
+            case OFF								:		Display_OFF(received_value);                                                           break;
 						case WAKEUP_CONFIRM_BTN :   App_Manager_Confirm_Wakeup();                                                          break;
 						
 						//Menu Configurar

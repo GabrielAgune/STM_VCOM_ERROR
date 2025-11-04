@@ -61,7 +61,6 @@ static const size_t NUM_DIAGNOSTIC_STEPS = sizeof(s_diagnostic_steps) / sizeof(s
 
 
 void App_Manager_Init(void) {
-    CLI_Init();
     DWIN_Driver_Init(&huart2, Controller_DwinCallback);
     EEPROM_Driver_Init(&hi2c1);
     Gerenciador_Config_Init(&hcrc);

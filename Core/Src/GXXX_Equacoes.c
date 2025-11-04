@@ -38,9 +38,9 @@
     { "Feijao Carioca  " , "Frijol Pinto    " , "Beans Pinto     " , "Haricot Pinto   " , "Fagioli Borlotti" , "Pinto Bohnen    " ,  13868 ,    5.1768E-6 ,   -1.7355E-3 ,    2.7117E-1 ,   -1.8416E+0 ,   5 ,  35 ,  170 ,   -1.4880E-3 ,   -7.5168E-2 }, 
 		{ "Feijao PingoOuro" , "Frijol Gota de O" , "Gold Drop Bean  " , "Haricot Goutte O" , "Fagiolo Goccia O" , "Goldtropfenbohne" ,  13785 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,   5 ,  30 ,  142 ,    0.0000E+0 ,    0.0000E+0 },
     { "Milho Pipoca    " , "Maiz Pisingallo " , "Popcorn         " , "Mais a Eclater  " , "Mais da Popcorn " , "Popcorn-Mais    " ,  13812 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,   5 ,  35 ,  142 ,    0.0000E+0 ,    0.0000E+0 },
-};*/
+};
 
-
+*/
 const struct Produtos_ROM Produto[]={
     { "Amaranto        " , "Amaranto        " , "Amaranth        " , "Amarante        " , "Amaranto        " , "Amarant         " ,  13853 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,   9 ,  25 ,  142 ,    0.0000E+0 ,    0.0000E+0 },
     { "Amendoa Nat 100g" , "Almendra Natural" , "Almond Natural  " , "Amande Naturelle" , "Mandorla Natur." , "Mandel Naturlich" ,  13820 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,    0.0000E+0 ,   3 ,  30 ,  100 ,    0.0000E+0 ,    0.0000E+0 },

@@ -1,6 +1,7 @@
 /*******************************************************************************
  * @file        dwin_driver.c
  * @brief       Driver não-bloqueante DMA UART para Display DWIN.
+ * @author      Gabriel Agune
  * @version     Revisado v1.3 (com timestamp e contador de debug)
  ******************************************************************************/
 
@@ -10,11 +11,10 @@
 #include <stdio.h>
 
 // Para controlar logs de debug (defina como 1 para habilitar)
-#define DEBUG_DWIN 1
+#define DEBUG_DWIN 0
 
 #if DEBUG_DWIN
-// NOVO: Adicionado timestamp [HAL_GetTick()] a cada log para análise de tempo.
-// O formato %010lu garante alinhamento visual dos logs.
+
 #define DWIN_LOG(fmt, ...) printf("[%010u] " fmt, HAL_GetTick(), ##__VA_ARGS__)
 #else
 #define DWIN_LOG(fmt, ...) do {} while (0)
@@ -138,13 +138,13 @@ void DWIN_Driver_Process(void)
 
     DWIN_Start_Listening();
 
-    DWIN_LOG("[DWIN RX #%u] Pacote recebido (len=%u): ", packet_id, local_len);
-    for (uint16_t i = 0u; i < local_len; i++)
-    {
+    //DWIN_LOG("[DWIN RX #%u] Pacote recebido (len=%u): ", packet_id, local_len);
+    //for (uint16_t i = 0u; i < local_len; i++)
+    //{
         // A macro DWIN_LOG já adiciona o timestamp, então usamos printf para os bytes.
-        printf("%02X ", local_buffer[i]);
-    }
-    printf("\r\n");
+      //  printf("%02X ", local_buffer[i]);
+   // }
+   //printf("\r\n");
 
 
     // Filtro rápido ACK padrão "OK"
@@ -191,7 +191,6 @@ void DWIN_TX_Pump(void)
     }
 
     // A interrupção de TX Cplt (DMA) modifica s_dma_tx_busy.
-    // O loop principal chama esta função. Precisamos proteger.
     HAL_NVIC_DisableIRQ(USART2_IRQn);
     HAL_NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
 
@@ -225,8 +224,6 @@ static bool DWIN_TX_Queue_Send_Bytes(const uint8_t* data, uint16_t size)
 {
     if ((data == NULL) || (size == 0u)) { return false; }
 
-    // O loop principal e as interrupções podem chamar funções que usam este método.
-    // Protegemos o acesso ao FIFO de transmissão.
     HAL_NVIC_DisableIRQ(USART2_IRQn);
     HAL_NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
 
@@ -244,7 +241,6 @@ static bool DWIN_TX_Queue_Send_Bytes(const uint8_t* data, uint16_t size)
     {
         HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
         HAL_NVIC_EnableIRQ(USART2_IRQn);
-        // Aqui pode se implementar contador de comandos descartados
         return false;
     }
 
@@ -297,8 +293,24 @@ bool DWIN_Driver_WriteInt32(uint16_t vp_address, int32_t value)
     return DWIN_TX_Queue_Send_Bytes(cmd_buffer, sizeof(cmd_buffer));
 }
 
+/*===============================================================================
+ *                            Exemplo comando String                            *
+ *------------------------------------------------------------------------------* 
+ *                                                                              *
+ *                5A A5 0C 83 20 30 04 73 65 6E 68 61 FF FF 00                  *
+ *                                                                              *
+ *  HEADER - 5A A5                                                              *
+ *  LEN - 0C                                                                    *
+ *  CMD - 83 (READ)                                                             *
+ *  ADDR - 2030 (VP)                                                            *
+ *  LEN_WORD - 04                                                               *
+ *  DATA - 73 65 6E 68 61                                                       *
+ *  TERMINADOR - FF FF (EVITA LIXO NO TEXT DISPLAY)                             *
+ *  PADDING (N BYTES IMPAR) - 00                                                *
+ *==============================================================================*/
+
 bool DWIN_Driver_WriteString(uint16_t vp_address, const char* text, uint16_t max_len)
-{
+{	
     if ((s_huart == NULL) || (text == NULL) || (max_len == 0u))
     {
         return false;
@@ -310,37 +322,30 @@ bool DWIN_Driver_WriteString(uint16_t vp_address, const char* text, uint16_t max
         text_len = max_len;
     }
 
-    // 1. Aumentar o payload em 2 bytes para os terminadores 0xFF 0xFF
-    //    (3u = 0x82 + VP_H + VP_L)
     uint8_t frame_payload_len = 3u + (uint8_t)text_len + 2u; 
 
-    // 2. O tamanho total do frame agora reflete os 2 bytes extras
-    //    (3u = 0x5A + 0xA5 + LEN)
     uint16_t total_frame_size = 3u + frame_payload_len;
 
     if (total_frame_size > sizeof(s_tx_dma_buffer))
     {
-        return false; // String (com terminadores) muito grande para o buffer local
+        return false; 
     }
 
     uint8_t temp_frame_buffer[sizeof(s_tx_dma_buffer)];
 
-    // 3. Construir o cabeçalho (Header e Comando)
     temp_frame_buffer[0] = 0x5A;
     temp_frame_buffer[1] = 0xA5;
-    temp_frame_buffer[2] = frame_payload_len; // Envia o novo tamanho (já somado +2)
-    temp_frame_buffer[3] = 0x82; // Comando de escrita
+    temp_frame_buffer[2] = frame_payload_len; 
+    temp_frame_buffer[3] = 0x82; 
     temp_frame_buffer[4] = (uint8_t)(vp_address >> 8);
     temp_frame_buffer[5] = (uint8_t)(vp_address & 0xFF);
 
-    // 4. Copiar a string
     memcpy(&temp_frame_buffer[6], text, text_len);
 
-    // 5. Adicionar os terminadores 0xFF 0xFF após a string
+
     temp_frame_buffer[6 + text_len] = 0xFF;
     temp_frame_buffer[6 + text_len + 1] = 0xFF;
 
-    // 6. Enviar o frame completo (total_frame_size já está correto)
     return DWIN_TX_Queue_Send_Bytes(temp_frame_buffer, total_frame_size);
 }
 bool DWIN_Driver_WriteRawBytes(const uint8_t* data, uint16_t size)
@@ -396,6 +401,38 @@ void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size)
         s_rx_pending_data = true;
         s_last_rx_event_tick = HAL_GetTick();
     }
+}
+
+void DWIN_Driver_Force_Reset(void)
+{
+    if (s_huart == NULL) return;
+
+    printf("DWIN Driver: Forcando reset completo da UART e DMA.\r\n");
+
+    // 1. Aborta qualquer operao de UART/DMA em andamento.
+    HAL_UART_Abort(s_huart);
+
+    // 2. LIMPEZA DE HARDWARE: Descarta qualquer lixo de dados no registrador de recepo.
+    //    L o registrador de dados at que a flag RXNE (Receive Not Empty) seja limpa.
+    //    Isso  crucial para evitar a leitura de bytes desalinhados aps um bloqueio.
+    uint32_t ORE_flag = __HAL_UART_GET_FLAG(s_huart, UART_FLAG_ORE);
+    if (ORE_flag)
+    {
+        printf("DWIN Driver: Flag de Overrun (ORE) detectada. Limpando...\r\n");
+        __HAL_UART_CLEAR_OREFLAG(s_huart);
+    }
+    
+    // Loop para consumir bytes residuais no buffer de hardware
+    while (__HAL_UART_GET_FLAG(s_huart, UART_FLAG_RXNE))
+    {
+        (void)s_huart->Instance->RDR; // L e descarta o byte
+    }
+
+    // 3. REINICIALIZAO DE SOFTWARE: Chama a funo de inicializao original
+    //    para zerar as flags do driver, buffers e reiniciar o listener DMA.
+    //    O callback  passado novamente para garantir que o ponteiro esteja correto.
+    extern void Controller_DwinCallback(const uint8_t* data, uint16_t len);
+    DWIN_Driver_Init(s_huart, Controller_DwinCallback);
 }
 
 /**

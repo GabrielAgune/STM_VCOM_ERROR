@@ -1,7 +1,7 @@
 /*******************************************************************************
  * @file        retarget.c
  * @brief       Redirecionamento (Retarget) de syscalls para I/O.
- * @version     9.0 (Arquitetura USB VCOM)
+ * @author      Gabriel Agune
  * @details     Este módulo agora implementa o syscall _write, que é a base
  * para o printf da biblioteca C padrão. Ele redireciona toda a
  * saída para a função de transmissão USB.

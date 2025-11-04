@@ -13,6 +13,7 @@
 #include "GXXX_Equacoes.h"
 #include "retarget.h"
 #include "usart.h" // Para acesso ao huart2
+#include "dwin_driver.h"
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -26,14 +27,13 @@ static volatile bool s_config_dirty = false;
 static void Recalcular_E_Atualizar_CRC_Cache(void);
 static bool Tentar_Carregar_De_Endereco(uint16_t address, Config_Aplicacao_t* config);
 
+extern void DWIN_Driver_Init(UART_HandleTypeDef *huart, dwin_rx_callback_t callback);
+extern void Controller_DwinCallback(const uint8_t* data, uint16_t len);
+
+
 void Gerenciador_Config_Init(CRC_HandleTypeDef* hcrc) {
     s_crc_handle = hcrc;
     s_config_dirty = false;
-}
-
-void Gerenciador_Config_Run_FSM(void) {
-    // Esta função não é mais necessária com a abordagem de escrita síncrona.
-    // Pode ser removida da chamada no super-loop do app_manager.
 }
 
 /**
@@ -51,79 +51,51 @@ bool Gerenciador_Config_Ha_Pendencias(void) {
     return s_config_dirty;
 }
 
-/**
- * @brief Salva a configuração atual do cache na EEPROM de forma bloqueante.
- * @return true se o salvamento em todas as áreas (primária e backups) for bem-sucedido,
- *         false se qualquer uma das escritas falhar.
- * @note   Esta função é BLOQUEANTE. Ela só deve ser chamada quando uma pequena
- *         pausa no sistema for aceitável (ex: após o usuário confirmar uma mudança).
- * @note   VERSÃO 10.1: Agora protege a comunicação DWIN desabilitando interrupções
- *         de RX durante a escrita crítica na EEPROM.
- */
+
 bool Gerenciador_Config_Salvar_Agora(void) {
     if (!s_config_dirty) {
-        return true; // Não há nada para salvar, considera sucesso.
+        return true; 
     }
 
     printf("Iniciando salvamento sincrono na EEPROM...\r\n");
 
     // ============================================================================
-    // PROTEÇÃO CRÍTICA: Desabilita interrupções do DWIN durante escrita EEPROM
+    // PROTEO CRTICA: Desabilita interrupes do DWIN durante escrita EEPROM
     // ============================================================================
-    // Durante a escrita bloqueante I2C (~4 segundos para 3 blocos), o loop principal
-    // não processa DWIN_Driver_Process(). Se as interrupções de RX continuarem,
-    // o buffer DMA transbordará. Solução: desabilitar IRQs temporariamente.
-    
-    extern UART_HandleTypeDef huart2; // Declaração externa (definido em usart.c)
-    
+    extern UART_HandleTypeDef huart2;
     HAL_NVIC_DisableIRQ(USART2_IRQn);
     HAL_NVIC_DisableIRQ(DMA1_Channel1_IRQn); // DMA RX do USART2
 
-    // Passo 1: Calcular o CRC. Operação bloqueante, mas necessária e rápida.
     Recalcular_E_Atualizar_CRC_Cache();
 
-    // Passo 2: Escrever no bloco primário.
     bool success = true;
     if (!EEPROM_Driver_Write_Blocking(ADDR_CONFIG_PRIMARY, (const uint8_t*)&s_config_cache, sizeof(Config_Aplicacao_t))) {
         printf("ERRO: Falha ao escrever no bloco primario da EEPROM.\r\n");
         success = false;
-    } else {
-        printf("Bloco primario OK.\r\n");
     }
 
-    // Passo 3: Escrever no primeiro backup.
     if (success && !EEPROM_Driver_Write_Blocking(ADDR_CONFIG_BACKUP1, (const uint8_t*)&s_config_cache, sizeof(Config_Aplicacao_t))) {
         printf("ERRO: Falha ao escrever no bloco de backup 1.\r\n");
         success = false;
-    } else if (success) {
-        printf("Bloco BKP1 OK.\r\n");
     }
 
-    // Passo 4: Escrever no segundo backup.
     if (success && !EEPROM_Driver_Write_Blocking(ADDR_CONFIG_BACKUP2, (const uint8_t*)&s_config_cache, sizeof(Config_Aplicacao_t))) {
         printf("ERRO: Falha ao escrever no bloco de backup 2.\r\n");
         success = false;
-    } else if (success) {
-        printf("Bloco BKP2 OK.\r\n");
     }
 
     // ============================================================================
-    // RESTAURAÇÃO: Reabilita interrupções e reinicializa o RX do DWIN
+    // RESTAURAO ROBUSTA: Limpa o hardware da UART e reinicia o driver DWIN
     // ============================================================================
-    
     HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
     HAL_NVIC_EnableIRQ(USART2_IRQn);
     
-    // Reinicializa o listener DMA+IDLE do DWIN para garantir estado limpo
-    HAL_UART_AbortReceive_IT(&huart2);
-    
-    // Nota: A reinicialização completa é feita pelo próprio driver DWIN
-    // quando DWIN_Driver_Process() for chamado novamente no loop principal.
-    // Aqui apenas garantimos que o hardware está pronto.
+    // Chama a nova funo de recuperao que limpa o hardware antes de reiniciar.
+    DWIN_Driver_Force_Reset();
 
     if (success) {
         printf("Salvamento sincrono completo com sucesso.\r\n");
-        s_config_dirty = false; // Limpa a flag apenas se tudo deu certo.
+        s_config_dirty = false;
     } else {
         printf("AVISO: Salvamento incompleto. Sistema pode estar em estado inconsistente.\r\n");
     }
@@ -152,7 +124,7 @@ bool Gerenciador_Config_Validar_e_Restaurar(void)
     }
 
     Carregar_Configuracao_Padrao();
-    Gerenciador_Config_Marcar_Como_Pendente(); // A configuração padrão precisa ser salva.
+    Gerenciador_Config_Marcar_Como_Pendente(); // A configurao padro precisa ser salva.
     return false;
 }
 
@@ -331,7 +303,7 @@ bool Gerenciador_Config_Get_Serial(char* serial, uint8_t tamanho_buffer)
 static void Recalcular_E_Atualizar_CRC_Cache(void)
 {
     if (s_crc_handle == NULL) return;
-    // O cálculo do CRC é feito sobre todos os dados da struct EXCETO o próprio campo do CRC
+    // O clculo do CRC  feito sobre todos os dados da struct EXCETO o prprio campo do CRC
     uint32_t tamanho_dados_crc = offsetof(Config_Aplicacao_t, crc);
     uint32_t novo_crc = HAL_CRC_Calculate(s_crc_handle, (uint32_t*)&s_config_cache, tamanho_dados_crc / 4);
     s_config_cache.crc = novo_crc;
@@ -339,7 +311,7 @@ static void Recalcular_E_Atualizar_CRC_Cache(void)
 
 static bool Tentar_Carregar_De_Endereco(uint16_t address, Config_Aplicacao_t* config_out)
 {
-    // A leitura no boot pode ser bloqueante, é aceitável.
+    // A leitura no boot pode ser bloqueante,  aceitvel.
     if (!EEPROM_Driver_Read_Blocking(address, (uint8_t*)config_out, sizeof(Config_Aplicacao_t)))
     {
         printf("EEPROM Check: Falha na leitura I2C no endereco 0x%X\r\n", address);

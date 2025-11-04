@@ -1,14 +1,10 @@
 /*******************************************************************************
  * @file        graos_handler.c
- * @brief       Gerenciador da tela e lógica de seleção de grãos.
- * @version     3.1 (Arquitetura de Salvamento Síncrono Robusto + Feedback Visual)
- * @author      Gabriel Agune, Refatorado por Copilot
- * @details     Este módulo foi atualizado para usar a função de salvamento
- *              bloqueante `Gerenciador_Config_Salvar_Agora()`. Ao confirmar a
- *              seleção de um grão (via setas ou pesquisa), o sistema primeiro
- *              mostra feedback visual "Salvando...", depois salva a configuração
- *              na EEPROM de forma síncrona. A transição para a próxima tela só
- *              ocorre se o salvamento for bem-sucedido.
+ * @brief       Gerenciador da tela e lgica de seleo de gros.
+ * @author      Gabriel Agune
+ * @details     Esta verso adiciona chamadas explcitas a DWIN_TX_Pump() 
+ *              para forcar a sincronizacao da UI antes de operacoes
+ *              bloqueantes, mitigando a condicao de corrida.
  ******************************************************************************/
 
 #include "graos_handler.h"
@@ -21,18 +17,18 @@
 #include <stdbool.h>
 
 //================================================================================
-// Definições e Variáveis Internas
+// Definies e Variveis Internas
 //================================================================================
 
 #define MAX_RESULTADOS_PESQUISA 20
 #define MAX_RESULTADOS_POR_PAGINA 10
 
-// --- Variáveis para Pesquisa e Paginação ---
+// --- Variveis para Pesquisa e Paginao ---
 static int16_t s_indices_resultados_pesquisa[MAX_RESULTADOS_PESQUISA];
 static uint8_t s_num_resultados_encontrados = 0;
 static uint8_t s_current_page = 1;
 static uint8_t s_total_pages = 1;
-static bool s_search_active = false; // Flag para saber se a pesquisa está ativa
+static bool s_search_active = false; // Flag para saber se a pesquisa est ativa
 
 // Mapeamento de VPs para os slots de resultado
 static const uint16_t s_vps_resultados_nomes[] = {
@@ -40,11 +36,11 @@ static const uint16_t s_vps_resultados_nomes[] = {
     VP_RESULT_NAME_6, VP_RESULT_NAME_7, VP_RESULT_NAME_8, VP_RESULT_NAME_9, VP_RESULT_NAME_10
 };
 
-// --- Variáveis para Navegação por Setas ---
+// --- Variveis para Navegao por Setas ---
 static int16_t s_indice_grao_selecionado = 0;
 static bool s_em_tela_de_selecao = false;
 
-// Enum para os resultados da lógica de navegação por setas
+// Enum para os resultados da lgica de navegao por setas
 typedef enum {
     NAV_RESULT_NO_CHANGE,
     NAV_RESULT_SELECTION_MOVED,
@@ -53,7 +49,7 @@ typedef enum {
 } GraosNavResult_t;
 
 //================================================================================
-// Protótipos das Funções Internas
+// Prottipos das Funes Internas
 //================================================================================
 
 static void atualizar_display_grao_selecionado(int16_t indice);
@@ -63,7 +59,7 @@ static char* stristr(const char* str1, const char* str2);
 static void Executar_Salvamento_Com_Feedback(int16_t indice_grao);
 
 //================================================================================
-// Funções Públicas (Handlers de Evento)
+// Funes Pblicas (Handlers de Evento)
 //================================================================================
 
 void Graos_Handle_Entrada_Tela(void)
@@ -75,7 +71,7 @@ void Graos_Handle_Entrada_Tela(void)
     s_indice_grao_selecionado = indice_salvo;
 
     
-    // Atualiza também os campos de navegação por setas
+    // Atualiza tambm os campos de navegao por setas
     atualizar_display_grao_selecionado(s_indice_grao_selecionado);
 
     Controller_SetScreen(SELECT_GRAO);
@@ -97,7 +93,6 @@ void Graos_Handle_Navegacao(int16_t tecla)
             
             // Executa salvamento com feedback visual
             Executar_Salvamento_Com_Feedback(s_indice_grao_selecionado);
-						Controller_SetScreen(PRINCIPAL);
             break;
 
         case NAV_RESULT_CANCELLED:
@@ -152,7 +147,7 @@ void Graos_Confirmar_Selecao_Pesquisa(uint8_t slot_selecionado)
         printf("Selecao via pesquisa confirmada. Indice do Grao: %d.\r\n", indice_final);
         
         s_em_tela_de_selecao = false;
-        s_indice_grao_selecionado = indice_final; // Atualiza o índice da navegação por setas
+        s_indice_grao_selecionado = indice_final; // Atualiza o ndice da navegao por setas
 
         // Executa salvamento com feedback visual
         Executar_Salvamento_Com_Feedback(indice_final);
@@ -169,7 +164,7 @@ void Graos_Limpar_Resultados_Pesquisa(void)
 }
 
 //================================================================================
-// Implementação da Lógica Interna
+// Implementao da Lgica Interna
 //================================================================================
 
 void Graos_Executar_Pesquisa(const char* termo_pesquisa)
@@ -247,7 +242,7 @@ static void Graos_Update_Page_Indicator(void)
     }
 }
 
-// --- Funções Restauradas para Navegação por Setas ---
+// --- Funes Restauradas para Navegao por Setas ---
 
 static GraosNavResult_t graos_handle_navegacao_logic(int16_t tecla)
 {
@@ -321,40 +316,36 @@ static char* stristr(const char* str1, const char* str2) {
 }
 
 /**
- * @brief NOVA FUNÇÃO: Executa o salvamento com feedback visual ao usuário.
- * @param indice_grao O índice do grão selecionado a ser salvo.
+ * @brief NOVA FUNO: Executa o salvamento com feedback visual ao usurio.
+ * @param indice_grao O ndice do gro selecionado a ser salvo.
  */
 static void Executar_Salvamento_Com_Feedback(int16_t indice_grao)
 {
     // ============================================================================
-    // PASSO 1: Mostrar tela de "Salvando..." ANTES de bloquear o sistema
+    // PASSO 1: Mostrar tela de "Salvando..." e GARANTIR que foi enviada
     // ============================================================================
     Controller_SetScreen(MSG_ALERTA);
-    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando configuracao...", 24);
+    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando...", 11);
     
-    // Força o envio imediato dos comandos para o display
+    // Fora o envio imediato dos comandos para o display e espera a concluso
     while (DWIN_Driver_IsTxBusy()) {
-        DWIN_TX_Pump();
+        DWIN_TX_Pump(); 
     }
-    
-    // Pequeno delay para garantir que o display processou a mudança de tela
-    HAL_Delay(100);
+
     
     // ============================================================================
-    // PASSO 2: Atualizar configuração em cache
+    // PASSO 2: Atualizar configurao em cache
     // ============================================================================
     Gerenciador_Config_Set_Grao_Ativo(indice_grao);
     
     // ============================================================================
-    // PASSO 3: Salvar de forma bloqueante (COM PROTEÇÃO DWIN)
+    // PASSO 3: Salvar de forma bloqueante (COM PROTEO DWIN)
     // ============================================================================
-    // A função Gerenciador_Config_Salvar_Agora() agora desabilita as interrupções
-    // do DWIN durante a escrita na EEPROM, evitando o overflow de RX.
     if (Gerenciador_Config_Salvar_Agora()) {
-        // SUCESSO: Limpa pesquisa e retorna para tela de seleção atualizada
-        printf("Salvamento bem-sucedido. Voltando para tela de selecao.\r\n");
+        // SUCESSO: Limpa a pesquisa e retorna para a tela principal
+        printf("Salvamento bem-sucedido. Retornando para a tela principal.\r\n");
         Graos_Limpar_Resultados_Pesquisa();
-        Graos_Handle_Entrada_Tela();
+        Controller_SetScreen(PRINCIPAL);
     } else {
         // FALHA: Mostra tela de erro
         printf("ERRO CRITICO: Falha ao salvar a configuracao!\r\n");
@@ -362,8 +353,9 @@ static void Executar_Salvamento_Com_Feedback(int16_t indice_grao)
         DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
     }
     
-    // Garante que a última mensagem seja enviada
+    // Garante que o ltimo comando (PRINCIPAL ou MSG_ERROR) seja enviado
     while (DWIN_Driver_IsTxBusy()) {
         DWIN_TX_Pump();
+        HAL_Delay(1);
     }
 }

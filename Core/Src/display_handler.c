@@ -80,6 +80,20 @@ void Display_StartMeasurementSequence(void) {
     }
 }
 
+void Display_OFF(uint16_t received_value)
+{
+	if (received_value == 0x0010)
+	{
+		Controller_SetScreen(SYSTEM_STANDBY);
+		DWIN_Driver_WriteRawBytes(CMD_AJUSTAR_BACKLIGHT_10, sizeof(CMD_AJUSTAR_BACKLIGHT_10));
+	}
+	else
+	{
+		Controller_SetScreen(PRINCIPAL);
+		DWIN_Driver_WriteRawBytes(CMD_AJUSTAR_BACKLIGHT_100, sizeof(CMD_AJUSTAR_BACKLIGHT_100));
+	}
+}
+
 void Display_ProcessPrintEvent(uint16_t received_value)
 {
     if (!s_printing_enabled) return;

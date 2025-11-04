@@ -36,6 +36,7 @@ void DisplayHandler_Init(void);
 void DisplayHandler_Process(void);
 
 // --- Handlers de Eventos chamados pelo Controller ---
+void Display_OFF(uint16_t received_value);
 void Display_ProcessPrintEvent(uint16_t received_value);
 void Display_SetRepeticoes(uint16_t received_value);
 void Display_SetDecimals(uint16_t received_value);

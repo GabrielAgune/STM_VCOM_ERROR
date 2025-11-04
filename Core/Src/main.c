@@ -123,22 +123,24 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		
+		//USB
     ux_device_stack_tasks_run();
-    // 2. Verifica se o PC enviou dados via USB
+		
     ULONG bytes_received = 0;
     USBD_CDC_ACM_Receive(usb_rx_buffer, sizeof(usb_rx_buffer), &bytes_received);
 
     if (bytes_received > 0)
     {
-      // 3. Entrega cada byte recebido para o processador do CLI
       for (int i = 0; i < bytes_received; i++)
       {
         CLI_Receive_Char(usb_rx_buffer[i]);
       }
     }
-    /* --- FIM DA L?GICA DE USB --- */
 
-    // Suas tarefas existentes continuam aqui
+		CLI_TX_Pump(); 
+
+		//Sistema
 		App_Manager_Process();
 
 	}
