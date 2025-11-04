@@ -116,6 +116,8 @@ void Gerenciador_Config_Run_FSM(void);
  */
 bool Gerenciador_Config_Salvar_Agora(void);
 
+bool Gerenciador_Config_GetAndClearErrorFlag(void);
+
 /**
  * @brief Sinaliza que a configurao em cache foi modificada e precisa ser salva.
  */

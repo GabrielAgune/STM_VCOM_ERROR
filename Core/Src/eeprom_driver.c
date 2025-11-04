@@ -61,13 +61,13 @@ typedef enum {
  * @brief Estrutura de controle da máquina de estados (FSM).
  */
 static struct {
-    I2C_HandleTypeDef* i2c_handle;        // Ponteiro para o handler HAL I2C. 
-    EepromFsmState_t    state;            // Estado atual da FSM. 
-    const uint8_t* p_data;                // Ponteiro para os dados restantes a serem escritos. 
-    uint16_t            start_addr;       // Endereço de início da operação (EEPROM). 
-    uint16_t            bytes_remaining;  // Número de bytes restantes a escrever. 
-    uint32_t            delay_start_tick; // Timestamp (ms) do início do delay de escrita.
-    bool                error_flag;       // Flag que indica se ocorreu um erro de I2C. 
+    I2C_HandleTypeDef*  i2c_handle;        
+    EepromFsmState_t    state;            
+    const uint8_t*      p_data;                // Ponteiro para os DADOS NA RAM.
+    uint16_t            current_addr;     // Endereço de escrita ATUAL NA EEPROM. (CORRIGIDO)
+    uint16_t            bytes_remaining;  
+    uint32_t            delay_start_tick; 
+    bool                error_flag;       
 } s_fsm;
 
 
@@ -230,7 +230,7 @@ bool EEPROM_Driver_Write_Async_Start(uint16_t addr, const uint8_t *data, uint16_
     }
 
     // Configura a FSM para a nova operação
-    s_fsm.start_addr = addr;
+    s_fsm.current_addr = addr;
     s_fsm.p_data = data;
     s_fsm.bytes_remaining = size;
     s_fsm.error_flag = false;
@@ -248,15 +248,12 @@ void EEPROM_Driver_FSM_Process(void) {
                 break;
             }
 
-            // NOTA: A lógica original para 'current_addr' parece incorreta.
-            // (s_fsm.p_data - (const uint8_t*)NULL) resulta no endereço absoluto
-            // do ponteiro de dados, que somado ao start_addr causará um
-            // endereço inválido. A lógica está sendo mantida
-            // conforme a regra de "não alterar a lógica".
-            uint16_t current_addr = s_fsm.start_addr + (uint32_t)(s_fsm.p_data - (const uint8_t*)NULL);
+            // --- CÁLCULO DE ENDEREÇO CORRIGIDO ---
+            // O bug original estava aqui. Agora usamos o 'current_addr' 
+            // rastreado pela FSM.
             
             // Calcula o tamanho do chunk, respeitando o limite da página (do .h)
-            uint16_t chunk_size = EEPROM_PAGE_SIZE - (current_addr % EEPROM_PAGE_SIZE);
+            uint16_t chunk_size = EEPROM_PAGE_SIZE - (s_fsm.current_addr % EEPROM_PAGE_SIZE);
 
             // Limita o chunk ao total de dados restantes
             if (chunk_size > s_fsm.bytes_remaining) {
@@ -264,13 +261,15 @@ void EEPROM_Driver_FSM_Process(void) {
             }
 
             // Inicia a escrita I2C usando Interrupção (IT)
-            if (HAL_I2C_Mem_Write_IT(s_fsm.i2c_handle, EEPROM_I2C_ADDR, current_addr, I2C_MEMADD_SIZE_16BIT, (uint8_t*)s_fsm.p_data, chunk_size) != HAL_OK) {
+            if (HAL_I2C_Mem_Write_IT(s_fsm.i2c_handle, EEPROM_I2C_ADDR, s_fsm.current_addr, I2C_MEMADD_SIZE_16BIT, (uint8_t*)s_fsm.p_data, chunk_size) != HAL_OK) {
                 s_fsm.error_flag = true;
                 s_fsm.state = FSM_ERROR;
             } else {
                 // Avança os ponteiros de dados
                 s_fsm.p_data += chunk_size;
                 s_fsm.bytes_remaining -= chunk_size;
+                s_fsm.current_addr += chunk_size; // <<< CORREÇÃO AQUI: Atualiza o endereço da EEPROM para o próximo chunk.
+                
                 // Aguarda a interrupção (TxCplt ou Error)
                 s_fsm.state = FSM_WAIT_I2C_IT;
             }

@@ -12,59 +12,73 @@
 #include "eeprom_driver.h"
 #include "GXXX_Equacoes.h"
 #include "retarget.h"
-#include "usart.h" // Para acesso ao huart2
-#include "dwin_driver.h"
 #include <string.h>
 #include <stdio.h>
 #include <stddef.h>
 
+// --- Variáveis Estáticas ---
 static CRC_HandleTypeDef *s_crc_handle = NULL;
 static Config_Aplicacao_t s_config_cache;
+static volatile bool s_config_dirty = false; // Flag que indica dados pendentes
 
-// A FSM complexa foi removida. Usamos apenas uma flag para indicar se há dados pendentes.
-static volatile bool s_config_dirty = false;
+/**
+ * @brief Estados da FSM de gerenciamento de salvamento.
+ */
+typedef enum {
+    MGR_FSM_IDLE,                 // Ocioso, monitorando a flag 'dirty'
+    MGR_FSM_START_SAVE,           // Prepara para salvar (calcula CRC)
+    
+    MGR_FSM_WRITE_PRIMARY,        // Inicia a escrita no bloco primário
+    MGR_FSM_WAIT_PRIMARY_DONE,    // Aguarda o eeprom_driver terminar o primário
+    
+    MGR_FSM_WRITE_BACKUP1,        // Inicia a escrita no backup 1
+    MGR_FSM_WAIT_BACKUP1_DONE,    // Aguarda o eeprom_driver terminar o backup 1
+    
+    MGR_FSM_WRITE_BACKUP2,        // Inicia a escrita no backup 2
+    MGR_FSM_WAIT_BACKUP2_DONE,    // Aguarda o eeprom_driver terminar o backup 2
 
+    MGR_FSM_FINISH,               // Conclui a operação
+    MGR_FSM_ERROR                 // Falha na escrita
+} GerenciadorFsmState_t;
+
+static GerenciadorFsmState_t s_mgr_state = MGR_FSM_IDLE;
+static volatile bool s_mgr_error_flag = false;
+
+// --- Protótipos Privados ---
 static void Recalcular_E_Atualizar_CRC_Cache(void);
 static bool Tentar_Carregar_De_Endereco(uint16_t address, Config_Aplicacao_t* config);
 
-extern void DWIN_Driver_Init(UART_HandleTypeDef *huart, dwin_rx_callback_t callback);
-extern void Controller_DwinCallback(const uint8_t* data, uint16_t len);
-
+// --- Inicialização e Status ---
 
 void Gerenciador_Config_Init(CRC_HandleTypeDef* hcrc) {
     s_crc_handle = hcrc;
     s_config_dirty = false;
+    s_mgr_state = MGR_FSM_IDLE;
 }
 
-/**
- * @brief Sinaliza que a configuração em cache foi modificada e precisa ser salva.
- */
 void Gerenciador_Config_Marcar_Como_Pendente(void) {
     s_config_dirty = true;
 }
 
-/**
- * @brief Verifica se há configurações pendentes para salvar.
- * @return true se há dados para salvar, false caso contrário.
- */
 bool Gerenciador_Config_Ha_Pendencias(void) {
     return s_config_dirty;
 }
 
-
+/**
+ * @brief Função bloqueante para salvar.
+ * @deprecated Esta função foi substituída por Gerenciador_Config_Run_FSM().
+ * Chamar esta função irá congelar o main-loop por ~750ms.
+ * Foi mantida (sem o hack do DWIN) para compatibilidade de API.
+ */
 bool Gerenciador_Config_Salvar_Agora(void) {
     if (!s_config_dirty) {
         return true; 
     }
-
-    printf("Iniciando salvamento sincrono na EEPROM...\r\n");
-
-    // ============================================================================
-    // PROTEO CRTICA: Desabilita interrupes do DWIN durante escrita EEPROM
-    // ============================================================================
-    extern UART_HandleTypeDef huart2;
-    HAL_NVIC_DisableIRQ(USART2_IRQn);
-    HAL_NVIC_DisableIRQ(DMA1_Channel1_IRQn); // DMA RX do USART2
+    
+    printf("AVISO: Usando Gerenciador_Config_Salvar_Agora() bloqueante!\r\n");
+    
+    // O "TAPA-BURACO" (desabilitar IRQs do DWIN) foi REMOVIDO daqui.
+    // Este congelamento é a CAUSA da perda de pacotes do DWIN.
 
     Recalcular_E_Atualizar_CRC_Cache();
 
@@ -83,26 +97,138 @@ bool Gerenciador_Config_Salvar_Agora(void) {
         printf("ERRO: Falha ao escrever no bloco de backup 2.\r\n");
         success = false;
     }
-
-    // ============================================================================
-    // RESTAURAO ROBUSTA: Limpa o hardware da UART e reinicia o driver DWIN
-    // ============================================================================
-    HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-    HAL_NVIC_EnableIRQ(USART2_IRQn);
     
-    // Chama a nova funo de recuperao que limpa o hardware antes de reiniciar.
-    DWIN_Driver_Force_Reset();
+    // O "TAPA-BURACO" (re-init DWIN) foi REMOVIDO daqui.
 
     if (success) {
         printf("Salvamento sincrono completo com sucesso.\r\n");
         s_config_dirty = false;
-    } else {
-        printf("AVISO: Salvamento incompleto. Sistema pode estar em estado inconsistente.\r\n");
     }
     
     return success;
 }
 
+
+/**
+ * @brief Máquina de estados NÃO-BLOQUEANTE para salvar configurações.
+ * @details Deve ser chamada continuamente no main-loop.
+ */
+void Gerenciador_Config_Run_FSM(void)
+{
+    // 1. Sempre processa o driver de baixo nível
+    EEPROM_Driver_FSM_Process();
+    
+    // 2. Verifica se o driver de baixo nível está ocupado
+    if (EEPROM_Driver_IsBusy()) {
+        // Se o driver I2C/EEPROM está ocupado (enviando um chunk ou no delay de 5ms),
+        // não podemos iniciar uma *nova* operação.
+        // A FSM principal deve pausar, exceto se já estiver em um estado de "espera".
+        if (s_mgr_state != MGR_FSM_WAIT_PRIMARY_DONE &&
+            s_mgr_state != MGR_FSM_WAIT_BACKUP1_DONE &&
+            s_mgr_state != MGR_FSM_WAIT_BACKUP2_DONE) {
+            return;
+        }
+    }
+
+    // 3. Verifica se o driver de baixo nível relatou um erro
+    if (EEPROM_Driver_GetAndClearErrorFlag()) {
+        printf("FSM Gerenciador: ERRO detectado no eeprom_driver!\r\n");
+        s_mgr_state = MGR_FSM_ERROR;
+    }
+
+    // 4. Processa a FSM de alto nível
+    switch (s_mgr_state)
+    {
+        case MGR_FSM_IDLE:
+            if (s_config_dirty) {
+                s_mgr_state = MGR_FSM_START_SAVE;
+            }
+            break;
+
+        case MGR_FSM_START_SAVE:
+            printf("FSM Gerenciador: Iniciando salvamento assincrono...\r\n");
+            Recalcular_E_Atualizar_CRC_Cache();
+            s_mgr_error_flag = false; // Limpa a flag de erro
+            s_mgr_state = MGR_FSM_WRITE_PRIMARY;
+            break;
+
+        // --- Bloco Primário ---
+        case MGR_FSM_WRITE_PRIMARY:
+            printf("FSM Gerenciador: Escrevendo bloco primario...\r\n");
+            if (EEPROM_Driver_Write_Async_Start(ADDR_CONFIG_PRIMARY, (const uint8_t*)&s_config_cache, sizeof(Config_Aplicacao_t))) {
+                s_mgr_state = MGR_FSM_WAIT_PRIMARY_DONE;
+            } else {
+                s_mgr_state = MGR_FSM_ERROR; // Não foi possível iniciar
+            }
+            break;
+        
+        case MGR_FSM_WAIT_PRIMARY_DONE:
+            if (!EEPROM_Driver_IsBusy()) { // Concluiu
+                s_mgr_state = MGR_FSM_WRITE_BACKUP1;
+            }
+            // Se estiver ocupado, continua esperando (próximo ciclo do main-loop)
+            break;
+
+        // --- Bloco Backup 1 ---
+        case MGR_FSM_WRITE_BACKUP1:
+            printf("FSM Gerenciador: Escrevendo backup 1...\r\n");
+            if (EEPROM_Driver_Write_Async_Start(ADDR_CONFIG_BACKUP1, (const uint8_t*)&s_config_cache, sizeof(Config_Aplicacao_t))) {
+                s_mgr_state = MGR_FSM_WAIT_BACKUP1_DONE;
+            } else {
+                s_mgr_state = MGR_FSM_ERROR;
+            }
+            break;
+
+        case MGR_FSM_WAIT_BACKUP1_DONE:
+            if (!EEPROM_Driver_IsBusy()) { // Concluiu
+                s_mgr_state = MGR_FSM_WRITE_BACKUP2;
+            }
+            break;
+
+        // --- Bloco Backup 2 ---
+        case MGR_FSM_WRITE_BACKUP2:
+            printf("FSM Gerenciador: Escrevendo backup 2...\r\n");
+            if (EEPROM_Driver_Write_Async_Start(ADDR_CONFIG_BACKUP2, (const uint8_t*)&s_config_cache, sizeof(Config_Aplicacao_t))) {
+                s_mgr_state = MGR_FSM_WAIT_BACKUP2_DONE;
+            } else {
+                s_mgr_state = MGR_FSM_ERROR;
+            }
+            break;
+
+        case MGR_FSM_WAIT_BACKUP2_DONE:
+            if (!EEPROM_Driver_IsBusy()) { // Concluiu
+                s_mgr_state = MGR_FSM_FINISH;
+            }
+            break;
+
+        // --- Conclusão ---
+        case MGR_FSM_FINISH:
+            printf("FSM Gerenciador: Salvamento assincrono concluido.\r\n");
+            s_config_dirty = false; // Limpa a flag, sinalizando para o display_handler
+            s_mgr_state = MGR_FSM_IDLE;
+            break;
+
+        case MGR_FSM_ERROR:
+            printf("FSM Gerenciador: Erro. Abortando e tentando mais tarde.\r\n");
+            s_mgr_error_flag = true; // Sinaliza para o display_handler
+            s_mgr_state = MGR_FSM_IDLE;
+            break;
+    }
+}
+
+/**
+ * @brief (NOVA FUNÇÃO) Verifica se ocorreu um erro durante o último salvamento.
+ * @details A flag é limpa após a leitura.
+ * @return true se um erro foi registrado pela FSM, false caso contrário.
+ */
+bool Gerenciador_Config_GetAndClearErrorFlag(void)
+{
+    if (s_mgr_error_flag) {
+        s_mgr_error_flag = false;
+        return true;
+    }
+    return false;
+}
 
 bool Gerenciador_Config_Validar_e_Restaurar(void)
 {

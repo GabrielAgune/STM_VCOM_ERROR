@@ -14,7 +14,7 @@
 #ifndef __DWIN_DRIVER_H
 #define __DWIN_DRIVER_H
 
-#include "stm32c0xx_hal.h"
+#include "main.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -364,12 +364,6 @@ void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size);
 void DWIN_Driver_HandleError(UART_HandleTypeDef *huart);
 
 
-/**
- * @brief Força um reset completo do driver e da UART/DMA subjacente.
- * Útil para recuperação de travamentos de comunicação.
- * Limpa buffers de hardware (RDR) e reinicia o listener DMA.
- */
-void DWIN_Driver_Force_Reset(void);
 
 /*
 ==================================================

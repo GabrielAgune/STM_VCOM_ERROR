@@ -5,7 +5,6 @@
  * @version     Revisado v1.3 (com timestamp e contador de debug)
  ******************************************************************************/
 
-#include "main.h"
 #include "dwin_driver.h"
 #include <string.h>
 #include <stdio.h>
@@ -20,28 +19,26 @@
 #define DWIN_LOG(fmt, ...) do {} while (0)
 #endif
 
-// Tamanhos e constantes
-#define DWIN_RX_PACKET_TIMEOUT_MS  50
-#define DWIN_RX_ERROR_COOLDOWN_MS  100
-
-// Variáveis estáticas privadas
+// --- Variáveis estáticas privadas ---
 static UART_HandleTypeDef* s_huart = NULL;
 static dwin_rx_callback_t s_rx_callback = NULL;
 
+// RX
 static uint8_t s_rx_dma_buffer[DWIN_RX_BUFFER_SIZE];
 static volatile bool s_rx_pending_data = false;
 static volatile uint16_t s_received_len = 0u;
-static volatile uint32_t s_last_rx_event_tick = 0u;
-
 static volatile uint32_t s_rx_event_counter = 0u;
 
+// TX
 static uint8_t s_tx_fifo[DWIN_TX_FIFO_SIZE];
 static volatile uint16_t s_tx_fifo_head = 0u;
 static volatile uint16_t s_tx_fifo_tail = 0u;
 static uint8_t s_tx_dma_buffer[DWIN_TX_DMA_BUFFER_SIZE];
 static volatile bool s_dma_tx_busy = false;
-static volatile bool s_rx_needs_reset = false;
-static volatile uint32_t s_rx_error_cooldown_tick = 0u;
+
+// Buffer estático para construir comandos complexos (como strings)
+// Evita alocação em stack, prevenindo stack overflow.
+static uint8_t s_cmd_build_buffer[DWIN_TX_DMA_BUFFER_SIZE];
 
 
 
@@ -52,13 +49,19 @@ static bool DWIN_TX_Queue_Send_Bytes(const uint8_t* data, uint16_t size) ;
 
 static void DWIN_Start_Listening(void)
 {
+    // Aborta qualquer recepção anterior para garantir um estado limpo
+    HAL_UART_AbortReceive(s_huart);
+    
+    // Limpa flags de erro que possam ter ficado presas (especialmente Overrun)
+    __HAL_UART_CLEAR_FLAG(s_huart, UART_CLEAR_OREF | UART_CLEAR_NEF | UART_CLEAR_FEF);
+
+    // Reinicia a escuta. A detecção de IDLE line garante que receberemos
+    // pacotes de tamanho variável assim que houver uma pausa no barramento.
     if (HAL_UARTEx_ReceiveToIdle_DMA(s_huart, s_rx_dma_buffer, DWIN_RX_BUFFER_SIZE) != HAL_OK)
     {
-        HAL_UART_AbortReceive_IT(s_huart);
-        if (HAL_UARTEx_ReceiveToIdle_DMA(s_huart, s_rx_dma_buffer, DWIN_RX_BUFFER_SIZE) != HAL_OK)
-        {
-            Error_Handler();
-        }
+        // Em caso de falha, o HAL_UART_ErrorCallback será chamado,
+        // que por sua vez chamará DWIN_Driver_HandleError e tentará reiniciar.
+        DWIN_LOG("ERRO: Falha ao iniciar HAL_UARTEx_ReceiveToIdle_DMA\r\n");
     }
 }
 
@@ -72,137 +75,96 @@ void DWIN_Driver_Init(UART_HandleTypeDef *huart, dwin_rx_callback_t callback)
     s_rx_pending_data = false;
     s_tx_fifo_head = 0u;
     s_tx_fifo_tail = 0u;
-    s_rx_needs_reset = false;
-    s_rx_error_cooldown_tick = 0u;
-
-    memset(s_rx_dma_buffer, 0, sizeof(s_rx_dma_buffer));
-    memset(s_tx_fifo, 0, sizeof(s_tx_fifo));
-    memset(s_tx_dma_buffer, 0, sizeof(s_tx_dma_buffer));
-
+    
     DWIN_Start_Listening();
+    DWIN_LOG("Driver DWIN inicializado.\r\n");
 }
 
 void DWIN_Driver_Process(void)
 {
-    const uint32_t now = HAL_GetTick();
-
-    if (s_rx_error_cooldown_tick != 0u)
-    {
-        if ((now - s_rx_error_cooldown_tick) < DWIN_RX_ERROR_COOLDOWN_MS)
-        {
-            return;
-        }
-        s_rx_error_cooldown_tick = 0u;
-        s_rx_needs_reset = true;
-    }
-
-    if (s_rx_needs_reset)
-    {
-        s_rx_needs_reset = false;
-        s_rx_pending_data = false;
-        DWIN_LOG("DWIN: UART RX resetado apos erro.\r\n");
-        HAL_UART_AbortReceive_IT(s_huart);
-        DWIN_Start_Listening();
-        return;
-    }
-
+    // Se nenhum dado foi sinalizado pela ISR de RX, não há nada a fazer.
     if (!s_rx_pending_data)
     {
         return;
     }
 
-    if ((now - s_last_rx_event_tick) < DWIN_RX_PACKET_TIMEOUT_MS)
-    {
-        return;
-    }
-
-    // Copiar buffer para salvaguarda
     uint8_t local_buffer[DWIN_RX_BUFFER_SIZE];
     uint16_t local_len;
-    uint32_t packet_id; // Para capturar o número do pacote atomicamente
+    uint32_t packet_id;
 
-    // A interrupção de RX (DMA/Idle) modifica s_received_len e s_rx_pending_data.
-    // Protegemos esta leitura para garantir atomicidade.
-    HAL_NVIC_DisableIRQ(USART2_IRQn);
-    HAL_NVIC_DisableIRQ(DMA1_Channel1_IRQn);
-
+    // --- Início da Seção Crítica ---
+    // Copia os dados recebidos (sinalizados pela ISR) para um buffer local
+    // para processamento. Isso libera o buffer de DMA rapidamente.
+    __disable_irq();
+    
     local_len = s_received_len;
-    packet_id = s_rx_event_counter; // Captura o contador junto com os dados
+    packet_id = s_rx_event_counter;
     memcpy(local_buffer, s_rx_dma_buffer, local_len);
-    s_rx_pending_data = false;
+    
+    s_rx_pending_data = false; // Marca que processamos o pacote
     s_received_len = 0u;
+    
+    __enable_irq();
+    // --- Fim da Seção Crítica ---
 
-    HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-    HAL_NVIC_EnableIRQ(USART2_IRQn);
-
-
+    // Reinicia a escuta de DMA *imediatamente* após copiar os dados,
+    // para não perder o próximo pacote.
     DWIN_Start_Listening();
 
-    //DWIN_LOG("[DWIN RX #%u] Pacote recebido (len=%u): ", packet_id, local_len);
-    //for (uint16_t i = 0u; i < local_len; i++)
-    //{
-        // A macro DWIN_LOG já adiciona o timestamp, então usamos printf para os bytes.
-      //  printf("%02X ", local_buffer[i]);
-   // }
-   //printf("\r\n");
-
-
-    // Filtro rápido ACK padrão "OK"
-    if ((local_len == 6u) &&
-        (local_buffer[0] == 0x5A) && (local_buffer[1] == 0xA5) &&
-        (local_buffer[2] == 0x03) && (local_buffer[3] == 0x82) &&
-        (local_buffer[4] == 0x4F) && (local_buffer[5] == 0x4B))
-    {
-        DWIN_LOG("[DWIN RX #%u] -> ACK 'OK' descartado.\r\n", packet_id);
-        return;
-    }
-
-    // Validação pacote básico
+    // --- Validação e Encaminhamento ---
+    
+    // REMOVIDO: Filtro de ACK "OK". O driver deve passar TODOS os pacotes
+    // válidos para a camada de aplicação. A aplicação decide se ignora ACKs.
+    
+    // Validação básica do cabeçalho DWIN
     if ((local_len >= 4u) &&
         (local_buffer[0] == 0x5A) && (local_buffer[1] == 0xA5))
     {
         uint8_t payload_len = local_buffer[2];
-        uint8_t declared_len = 3u + payload_len;
+        uint8_t declared_len = 3u + payload_len; // 3 bytes (Header+Len) + payload
 
+        // Verifica se recebemos pelo menos o que o cabeçalho declarou
         if (local_len >= declared_len)
         {
             if (s_rx_callback != NULL)
             {
-                DWIN_LOG("[DWIN RX #%u] -> Pacote valido, encaminhando para o controller.\r\n", packet_id);
+                DWIN_LOG("[RX #%u] Pacote valido (len=%u), encaminhando.\r\n", (unsigned int)packet_id, declared_len);
+                // Envia o pacote com o tamanho *declarado* no cabeçalho
                 s_rx_callback(local_buffer, declared_len);
             }
         }
         else
         {
-            DWIN_LOG("[DWIN RX #%u] -> ERRO: Pacote truncado (recebido=%u, esperado=%u)\r\n", packet_id, local_len, declared_len);
+            DWIN_LOG("[RX #%u] ERRO: Pacote truncado (recebido=%u, esperado=%u)\r\n", (unsigned int)packet_id, local_len, declared_len);
         }
     }
     else
     {
-        DWIN_LOG("[DWIN RX #%u] -> ERRO: Pacote invalido descartado.\r\n", packet_id);
+        DWIN_LOG("[RX #%u] ERRO: Pacote invalido descartado (len=%u).\r\n", (unsigned int)packet_id, local_len);
     }
 }
 
 void DWIN_TX_Pump(void)
 {
+    // --- Início da Seção Crítica Atômica (Check-and-Set) ---
+    // Precisamos verificar se o DMA está ocupado E se há dados no FIFO,
+    // e então marcar o DMA como ocupado, tudo sem interrupção.
+    __disable_irq();
+    
     if (s_dma_tx_busy || (s_tx_fifo_head == s_tx_fifo_tail))
     {
+        // Ou o DMA está ocupado, ou o FIFO está vazio. Nada a fazer.
+        __enable_irq();
         return;
     }
-
-    // A interrupção de TX Cplt (DMA) modifica s_dma_tx_busy.
-    HAL_NVIC_DisableIRQ(USART2_IRQn);
-    HAL_NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
-
-    if (s_dma_tx_busy)
-    {
-        HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
-        HAL_NVIC_EnableIRQ(USART2_IRQn);
-        return;
-    }
-
+    
+    // Temos dados e o DMA está livre. Marcamos como ocupado.
     s_dma_tx_busy = true;
+    
+    __enable_irq();
+    // --- Fim da Seção Crítica ---
 
+    // Agora, fora da seção crítica, preparamos o buffer de DMA
     uint16_t bytes_to_send = 0u;
     while ((s_tx_fifo_tail != s_tx_fifo_head) && (bytes_to_send < DWIN_TX_DMA_BUFFER_SIZE))
     {
@@ -211,12 +173,13 @@ void DWIN_TX_Pump(void)
         bytes_to_send++;
     }
 
-    HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
-    HAL_NVIC_EnableIRQ(USART2_IRQn);
-
+    // Inicia a transmissão DMA
     if (HAL_UART_Transmit_DMA(s_huart, s_tx_dma_buffer, bytes_to_send) != HAL_OK)
     {
+        // Se a transmissão falhar, desmarcamos a flag para
+        // permitir uma nova tentativa no próximo ciclo do Pump.
         s_dma_tx_busy = false;
+        DWIN_LOG("ERRO: Falha ao iniciar HAL_UART_Transmit_DMA\r\n");
     }
 }
 
@@ -224,8 +187,11 @@ static bool DWIN_TX_Queue_Send_Bytes(const uint8_t* data, uint16_t size)
 {
     if ((data == NULL) || (size == 0u)) { return false; }
 
-    HAL_NVIC_DisableIRQ(USART2_IRQn);
-    HAL_NVIC_DisableIRQ(DMA1_Channel2_3_IRQn);
+    // --- Início da Seção Crítica ---
+    // Precisamos garantir que o cálculo de espaço e a inserção no FIFO
+    // não sejam interrompidos. Usamos __disable_irq (padrão CMSIS)
+    // por ser mais rápido e portátil que desabilitar IRQs específicas.
+    __disable_irq();
 
     uint16_t free_space;
     if (s_tx_fifo_head >= s_tx_fifo_tail)
@@ -239,19 +205,20 @@ static bool DWIN_TX_Queue_Send_Bytes(const uint8_t* data, uint16_t size)
 
     if (size > free_space)
     {
-        HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
-        HAL_NVIC_EnableIRQ(USART2_IRQn);
+        __enable_irq(); // Não esqueça de reabilitar as IRQs!
+        DWIN_LOG("ERRO: FIFO de TX cheio!\r\n");
         return false;
     }
 
+    // Copia os dados para o FIFO
     for (uint16_t i = 0u; i < size; i++)
     {
         s_tx_fifo[s_tx_fifo_head] = data[i];
         s_tx_fifo_head = (uint16_t)((s_tx_fifo_head + 1u) % DWIN_TX_FIFO_SIZE);
     }
 
-    HAL_NVIC_EnableIRQ(DMA1_Channel2_3_IRQn);
-    HAL_NVIC_EnableIRQ(USART2_IRQn);
+    __enable_irq();
+    // --- Fim da Seção Crítica ---
 
     return true;
 }
@@ -264,9 +231,7 @@ bool DWIN_Driver_IsTxBusy(void)
 bool DWIN_Driver_SetScreen(uint16_t screen_id)
 {
     uint8_t cmd_buffer[] = {
-        0x5A, 0xA5, 0x07, 0x82,
-        (uint8_t)(0x0084 >> 8), (uint8_t)(0x0084 & 0xFF),
-        0x5A, 0x01,
+        0x5A, 0xA5, 0x07, 0x82, 0x00, 0x84, 0x5A, 0x01,
         (uint8_t)(screen_id >> 8), (uint8_t)(screen_id & 0xFF)
     };
     return DWIN_TX_Queue_Send_Bytes(cmd_buffer, sizeof(cmd_buffer));
@@ -369,8 +334,11 @@ uint32_t DWIN_Driver_GetRxPacketCounter(void)
  */
 void DWIN_Driver_HandleTxCplt(UART_HandleTypeDef *huart)
 {
-    (void)huart;
-    s_dma_tx_busy = false;
+    if (huart->Instance == s_huart->Instance)
+    {
+        // Libera a flag para que o DWIN_TX_Pump possa enviar o próximo chunk.
+        s_dma_tx_busy = false;
+    }
 }
 
 /**
@@ -379,70 +347,52 @@ void DWIN_Driver_HandleTxCplt(UART_HandleTypeDef *huart)
  */
 void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size)
 {
-    if (huart->Instance != USART2)
+    // Apenas processa se for a UART que estamos gerenciando
+    if (huart->Instance != s_huart->Instance)
     {
         return;
     }
 
-    // Se já houver dados pendentes que o loop principal ainda não processou,
-    // ignoramos este novo pacote para evitar sobreposição. Isso indica que o
-    // sistema está lento para processar.
-    if (s_rx_pending_data) {
-        // Opcional: Logar um aviso de "overrun de software"
-        // DWIN_LOG("[WARN] DWIN RX overrun de software!\r\n");
+    // Se a aplicação (DWIN_Driver_Process) ainda não processou o último
+    // pacote, ignoramos este novo. Isso indica que o main-loop está lento.
+    if (s_rx_pending_data)
+    {
+        DWIN_LOG("AVISO: RX Overrun de software! Pacote descartado.\r\n");
+        // Reiniciamos a escuta para limpar o buffer de DMA e recomeçar.
+        DWIN_Start_Listening();
         return;
     }
     
-    if (size > 0u && size <= DWIN_RX_BUFFER_SIZE)
+    if (size > 0u)
     {
-        // Incrementa o contador a cada evento de recepção válido
         s_rx_event_counter++;
         s_received_len = size;
-        s_rx_pending_data = true;
-        s_last_rx_event_tick = HAL_GetTick();
+        s_rx_pending_data = true; // Sinaliza ao main-loop que há dados
     }
 }
 
-void DWIN_Driver_Force_Reset(void)
-{
-    if (s_huart == NULL) return;
-
-    printf("DWIN Driver: Forcando reset completo da UART e DMA.\r\n");
-
-    // 1. Aborta qualquer operao de UART/DMA em andamento.
-    HAL_UART_Abort(s_huart);
-
-    // 2. LIMPEZA DE HARDWARE: Descarta qualquer lixo de dados no registrador de recepo.
-    //    L o registrador de dados at que a flag RXNE (Receive Not Empty) seja limpa.
-    //    Isso  crucial para evitar a leitura de bytes desalinhados aps um bloqueio.
-    uint32_t ORE_flag = __HAL_UART_GET_FLAG(s_huart, UART_FLAG_ORE);
-    if (ORE_flag)
-    {
-        printf("DWIN Driver: Flag de Overrun (ORE) detectada. Limpando...\r\n");
-        __HAL_UART_CLEAR_OREFLAG(s_huart);
-    }
-    
-    // Loop para consumir bytes residuais no buffer de hardware
-    while (__HAL_UART_GET_FLAG(s_huart, UART_FLAG_RXNE))
-    {
-        (void)s_huart->Instance->RDR; // L e descarta o byte
-    }
-
-    // 3. REINICIALIZAO DE SOFTWARE: Chama a funo de inicializao original
-    //    para zerar as flags do driver, buffers e reiniciar o listener DMA.
-    //    O callback  passado novamente para garantir que o ponteiro esteja correto.
-    extern void Controller_DwinCallback(const uint8_t* data, uint16_t len);
-    DWIN_Driver_Init(s_huart, Controller_DwinCallback);
-}
 
 /**
  * @brief Callback de erro UART (ISR context).
  */
 void DWIN_Driver_HandleError(UART_HandleTypeDef *huart)
 {
-    (void)huart;
-    __HAL_UART_CLEAR_FLAG(huart, UART_CLEAR_OREF | UART_CLEAR_NEF | UART_CLEAR_FEF);
-    s_rx_error_cooldown_tick = HAL_GetTick();
-    s_rx_needs_reset = false;
+    if (huart->Instance != s_huart->Instance)
+    {
+        return;
+    }
+
+    // Um erro de UART (Overrun, Framing, Noise) ocorreu.
+    // A recuperação robusta é:
+    // 1. Limpar as flags de estado do driver.
+    // 2. Chamar DWIN_Start_Listening(), que irá Abortar o DMA,
+    //    limpar as flags de hardware da UART e reiniciar a escuta.
+    
+    DWIN_LOG("ERRO: Erro de UART (Flags: 0x%X). Reiniciando listener...\r\n", (unsigned int)huart->ErrorCode);
+    
     s_rx_pending_data = false;
+    s_received_len = 0u;
+    
+    // DWIN_Start_Listening() fará o trabalho sujo de abortar e reiniciar.
+    DWIN_Start_Listening();
 }

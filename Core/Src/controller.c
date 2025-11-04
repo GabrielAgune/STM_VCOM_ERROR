@@ -91,7 +91,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						
 						//Menu Servico
 						case PRESET_PRODUCT     :   Display_Preset(received_value);                                                        break;
-						case SET_DATE_TIME      :   RTC_Handle_Set_Date_And_Time(data, len, received_value);                      break;
+						case SET_DATE_TIME      :   RTC_Handle_Set_Date_And_Time(data, len, received_value);                               break;
 						case MODEL_OEM          :   Display_ShowModel();                                                                   break;						
 						case ADJUST_SCALE       :                                                                                          break;
 						case ADJUST_TERMO       :                                                                                          break;
@@ -103,7 +103,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						case SYSTEM_BURNIN      :                                                                                          break;
 						
 						case TECLAS							:		Graos_Handle_Navegacao(received_value);           																		 break;
-						case ESCAPE							:		Handle_Escape_Navigation(received_value);	                                  		  							     break;
+						case ESCAPE							:		Handle_Escape_Navigation(received_value);	                                  			     break;
 						
 						case VP_SEARCH_INPUT    :   Graos_Handle_Pesquisa_Texto(data, len);                                                break;
 						

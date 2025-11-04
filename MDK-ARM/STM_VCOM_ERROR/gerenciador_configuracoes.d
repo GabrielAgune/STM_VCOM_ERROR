@@ -40,4 +40,4 @@ stm_vcom_error/gerenciador_configuracoes.o: \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_usb.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd_ex.h \
   ..\Core\Inc\eeprom_driver.h ..\Core\Inc\GXXX_Equacoes.h \
-  ..\Core\Inc\retarget.h ..\Core\Inc\usart.h ..\Core\Inc\dwin_driver.h
+  ..\Core\Inc\retarget.h

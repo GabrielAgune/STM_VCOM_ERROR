@@ -53,7 +53,7 @@ void Display_Set_Serial(const uint8_t* dwin_data, uint16_t len, uint16_t receive
  * Esta função é NÃO-BLOQUEANTE e apenas inicia a máquina de estados.
  */
 void Display_StartMeasurementSequence(void);
-
+bool DisplayHandler_StartSaveFeedback(uint16_t return_screen, const char* success_msg);
 // --- Getters/Setters para estado interno ---
 void Display_SetPrintingEnabled(bool is_enabled);
 bool Display_IsPrintingEnabled(void);

@@ -1,16 +1,14 @@
 /*******************************************************************************
  * @file        display_handler.c
  * @brief       Implementação do Handler de Display.
- * @version     2.2 (Salvamento Protegido com Feedback Visual)
- * @author      Gemini (baseado na refatoração)
- * @details     Contém a máquina de estados não-bloqueante para a sequência
- * de medição e as tarefas de atualização periódica do display.
- * VERSÃO 2.2: Todas as funções que salvam na EEPROM agora usam
- * proteção DWIN e feedback visual ao usuário.
+ * @version     3.0 (FSM de Feedback Assíncrono)
+ * @author      Gemini (Refatorado)
+ * @details     Contém as FSMs não-bloqueantes para a sequência de medição,
+ * atualizações periódicas e feedback visual de salvamento.
  ******************************************************************************/
 
 #include "display_handler.h"
-
+#include "dwin_parser.h" // Dependência movida do .h para o .c
 
 //================================================================================
 // Definições, Enums e Variáveis Estáticas
@@ -45,6 +43,20 @@ static const uint8_t TEMP_UPDATE_PERIOD_SECONDS = 5;
 static uint32_t s_clock_last_tick = 0;
 static const uint32_t CLOCK_UPDATE_INTERVAL_MS = 1000;
 
+// --- FSM DE FEEDBACK DE SALVAMENTO (NOVO) ---
+typedef enum {
+    FB_STATE_IDLE,              // Ocioso
+    FB_STATE_SHOW_SAVING,       // Mostra "Salvando..."
+    FB_STATE_WAIT_SAVE_DONE,    // Espera a FSM do Gerenciador terminar
+    FB_STATE_SHOW_RESULT        // Mostra o resultado (Sucesso/Erro)
+} FeedbackState_t;
+
+static FeedbackState_t s_feedback_state = FB_STATE_IDLE;
+static uint16_t s_feedback_return_screen = PRINCIPAL;
+static char s_feedback_success_msg[50] = {0};
+static uint32_t s_feedback_timeout_tick = 0;
+static const uint32_t FEEDBACK_TIMEOUT_MS = 5000; // 5 segundos de timeout
+
 // --- Estado do Módulo ---
 static bool s_printing_enabled = true;
 
@@ -54,7 +66,7 @@ static bool s_printing_enabled = true;
 static void UpdateMonitorScreen(void);
 static void UpdateClockOnMainScreen(void);
 static void ProcessMeasurementSequenceFSM(void);
-static bool Executar_Salvamento_Com_Feedback(const char* mensagem_sucesso, uint16_t tela_retorno);
+static void ProcessFeedbackFSM(void); // <<< NOVA FUNÇÃO
 
 //================================================================================
 // Implementação das Funções Públicas
@@ -63,12 +75,43 @@ static bool Executar_Salvamento_Com_Feedback(const char* mensagem_sucesso, uint1
 void DisplayHandler_Init(void) {
     s_mede_state = MEDE_STATE_IDLE;
     s_printing_enabled = true;
+    s_feedback_state = FB_STATE_IDLE;
 }
 
 void DisplayHandler_Process(void) {
-    ProcessMeasurementSequenceFSM();
-    UpdateMonitorScreen();
-    UpdateClockOnMainScreen();
+    // A FSM de Feedback é a mais crítica, execute-a primeiro.
+    ProcessFeedbackFSM();
+
+    // As outras FSMs só rodam se a FSM de feedback não estiver ativa
+    if (s_feedback_state == FB_STATE_IDLE) {
+        ProcessMeasurementSequenceFSM();
+        UpdateMonitorScreen();
+        UpdateClockOnMainScreen();
+    }
+}
+
+/**
+ * @brief (NOVA FUNÇÃO PÚBLICA) Inicia a sequência de feedback de salvamento.
+ * @details Esta função é NÃO-BLOQUEANTE.
+ * @return true se o processo foi iniciado, false se já estava ocupado.
+ */
+bool DisplayHandler_StartSaveFeedback(uint16_t return_screen, const char* success_msg)
+{
+    if (s_feedback_state != FB_STATE_IDLE) {
+        return false; // Já está ocupado salvando
+    }
+
+    printf("Display: Iniciando feedback de salvamento. Retorno: %u\r\n", return_screen);
+
+    // Marca os dados como pendentes para a FSM do gerenciador
+    Gerenciador_Config_Marcar_Como_Pendente();
+
+    // Configura a FSM de feedback
+    s_feedback_return_screen = return_screen;
+    strncpy(s_feedback_success_msg, success_msg, sizeof(s_feedback_success_msg) - 1);
+    s_feedback_state = FB_STATE_SHOW_SAVING;
+
+    return true;
 }
 
 void Display_StartMeasurementSequence(void) {
@@ -138,15 +181,10 @@ void Display_SetRepeticoes(uint16_t received_value)
         DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
         Controller_SetScreen(TELA_SETUP_REPETICOES);
     } else {
-        // ============================================================================
-        // PROTEÇÃO DWIN: Salvamento com feedback visual
-        // ============================================================================
+        // Lógica de salvamento NÃO-BLOQUEANTE
         Gerenciador_Config_Set_NR_Repetitions(received_value);
         sprintf(buffer, "Repeticoes: %u", received_value);
-        
-        if (Executar_Salvamento_Com_Feedback(buffer, TELA_CONFIGURAR)) {
-            printf("Display: NR_Repetitions salvo com sucesso.\r\n");
-        }
+        DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer);
     }
 }
 
@@ -159,15 +197,10 @@ void Display_SetDecimals(uint16_t received_value)
         DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
         Controller_SetScreen(TELA_SET_DECIMALS);
     } else {
-        // ============================================================================
-        // PROTEÇÃO DWIN: Salvamento com feedback visual
-        // ============================================================================
+        // Lógica de salvamento NÃO-BLOQUEANTE
         Gerenciador_Config_Set_NR_Decimals(received_value);
         sprintf(buffer, "Casas decimais: %u", received_value);
-        
-        if (Executar_Salvamento_Com_Feedback(buffer, TELA_CONFIGURAR)) {
-            printf("Display: NR_Decimals salvo com sucesso.\r\n");
-        }
+        DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer);
     }
 }
 
@@ -186,15 +219,10 @@ void Display_SetUser(const uint8_t* dwin_data, uint16_t len, uint16_t received_v
         uint16_t payload_len = len - 6;
 
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, novo_nome, sizeof(novo_nome)) && strlen(novo_nome) > 0) {
-            // ============================================================================
-            // PROTEÇÃO DWIN: Salvamento com feedback visual
-            // ============================================================================
+            // Lógica de salvamento NÃO-BLOQUEANTE
             Gerenciador_Config_Set_Usuario(novo_nome);
             sprintf(buffer_display, "Usuario: %s", novo_nome);
-            
-            if (Executar_Salvamento_Com_Feedback(buffer_display, TELA_CONFIGURAR)) {
-                printf("Display: Usuario salvo com sucesso.\r\n");
-            }
+            DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer_display);
         }
     }
 }
@@ -214,15 +242,10 @@ void Display_SetCompany(const uint8_t* dwin_data, uint16_t len, uint16_t receive
         uint16_t payload_len = len - 6;
         
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, nova_empresa, sizeof(nova_empresa)) && strlen(nova_empresa) > 0) {
-            // ============================================================================
-            // PROTEÇÃO DWIN: Salvamento com feedback visual
-            // ============================================================================
+            // Lógica de salvamento NÃO-BLOQUEANTE
             Gerenciador_Config_Set_Company(nova_empresa);
             sprintf(buffer_display, "Empresa: %s", nova_empresa);
-            
-            if (Executar_Salvamento_Com_Feedback(buffer_display, TELA_CONFIGURAR)) {
-                printf("Display: Empresa salva com sucesso.\r\n");
-            }
+            DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer_display);
         }
     }
 }
@@ -254,14 +277,9 @@ void Display_Preset(uint16_t received_value)
     }
     else
     {
-        // ============================================================================
-        // PROTEÇÃO DWIN: Salvamento com feedback visual
-        // ============================================================================
-        Carregar_Configuracao_Padrao();
-        
-        if (Executar_Salvamento_Com_Feedback("Preset completo!", TELA_SERVICO)) {
-            printf("Display: Preset executado com sucesso.\r\n");
-        }
+        // Lógica de salvamento NÃO-BLOQUEANTE
+        Carregar_Configuracao_Padrao(); // Isso já marca como pendente
+        DisplayHandler_StartSaveFeedback(TELA_SERVICO, "Preset completo!");
     }
 }
 
@@ -285,14 +303,12 @@ void Display_Set_Serial(const uint8_t* dwin_data, uint16_t len, uint16_t receive
         
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, novo_serial, sizeof(novo_serial)) && strlen(novo_serial) > 0)
         {
-            // ============================================================================
-            // PROTEÇÃO DWIN: Salvamento com feedback visual
-            // ============================================================================
+            // Lógica de salvamento NÃO-BLOQUEANTE
             printf("Display Handler: Recebido novo serial: '%s'\n", novo_serial);
             Gerenciador_Config_Set_Serial(novo_serial);
             sprintf(buffer_display, "Serial: %s", novo_serial);
             
-            if (Executar_Salvamento_Com_Feedback(buffer_display, TELA_SERVICO)) {
+            if (DisplayHandler_StartSaveFeedback(TELA_SERVICO, buffer_display)) {
                 printf("Display: Serial salvo com sucesso.\r\n");
             }
         }
@@ -311,6 +327,58 @@ bool Display_IsPrintingEnabled(void) {
 //================================================================================
 // Implementação das Funções Privadas (Lógica de Fundo)
 //================================================================================
+
+/**
+ * @brief (NOVA FSM) Gerencia a UI de feedback de salvamento de forma assíncrona.
+ */
+static void ProcessFeedbackFSM(void)
+{
+    switch (s_feedback_state)
+    {
+        case FB_STATE_IDLE:
+            // Nada a fazer
+            break;
+
+        case FB_STATE_SHOW_SAVING:
+            // A FSM do Gerenciador será iniciada no próximo ciclo do main-loop
+            // porque a flag 'dirty' foi setada em StartSaveFeedback
+            Controller_SetScreen(MSG_ALERTA);
+            DWIN_Driver_WriteString(VP_MESSAGES, "Salvando...", 11);
+            s_feedback_timeout_tick = HAL_GetTick() + FEEDBACK_TIMEOUT_MS;
+            s_feedback_state = FB_STATE_WAIT_SAVE_DONE;
+            break;
+
+        case FB_STATE_WAIT_SAVE_DONE:
+            // Verifica se a FSM do gerenciador terminou (flag 'dirty' está limpa)
+            if (!Gerenciador_Config_Ha_Pendencias())
+            {
+                Controller_SetScreen(s_feedback_return_screen);
+                DWIN_Driver_WriteString(VP_MESSAGES, s_feedback_success_msg, strlen(s_feedback_success_msg));
+                s_feedback_state = FB_STATE_IDLE;
+            }
+            // Verifica se a FSM do gerenciador reportou um erro
+            else if (Gerenciador_Config_GetAndClearErrorFlag())
+            {
+                Controller_SetScreen(MSG_ERROR);
+                DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
+                s_feedback_state = FB_STATE_IDLE;
+            }
+            // Verifica timeout
+            else if (HAL_GetTick() > s_feedback_timeout_tick)
+            {
+                Controller_SetScreen(MSG_ERROR);
+                DWIN_Driver_WriteString(VP_MESSAGES, "Erro: Timeout!", 15);
+                s_feedback_state = FB_STATE_IDLE;
+            }
+            // Se nenhuma das condições acima for atendida, continua esperando
+            // (o main-loop continua rodando e chamando Gerenciador_Config_Run_FSM)
+            break;
+        
+        default:
+            s_feedback_state = FB_STATE_IDLE;
+            break;
+    }
+}
 
 /**
  * @brief Máquina de estados NÃO-BLOQUEANTE para a sequência de medição.
@@ -447,53 +515,4 @@ static void UpdateClockOnMainScreen(void) {
 				default:
 						break;
 		}
-}
-
-/**
- * @brief NOVA FUNÇÃO CENTRALIZADA: Executa salvamento com feedback visual.
- * @param mensagem_sucesso Mensagem a ser exibida em caso de sucesso.
- * @param tela_retorno Tela para a qual retornar após o salvamento.
- * @return true se o salvamento foi bem-sucedido, false caso contrário.
- */
-static bool Executar_Salvamento_Com_Feedback(const char* mensagem_sucesso, uint16_t tela_retorno)
-{
-    // ============================================================================
-    // PASSO 1: Mostrar tela de "Salvando..." ANTES de bloquear o sistema
-    // ============================================================================
-    Controller_SetScreen(MSG_ALERTA);
-    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando...", 11);
-    
-    // Força o envio imediato dos comandos para o display
-    while (DWIN_Driver_IsTxBusy()) {
-        DWIN_TX_Pump();
-    }
-    
-    // Pequeno delay para garantir que o display processou a mudança de tela
-    HAL_Delay(100);
-    
-    // ============================================================================
-    // PASSO 2: Salvar de forma bloqueante (COM PROTEÇÃO DWIN)
-    // ============================================================================
-    if (Gerenciador_Config_Salvar_Agora()) {
-        // SUCESSO: Mostra mensagem e retorna para tela especificada
-        Controller_SetScreen(tela_retorno);
-        DWIN_Driver_WriteString(VP_MESSAGES, mensagem_sucesso, strlen(mensagem_sucesso));
-        
-        while (DWIN_Driver_IsTxBusy()) {
-            DWIN_TX_Pump();
-        }
-        
-        return true;
-    } else {
-        // FALHA: Mostra tela de erro
-        printf("ERRO CRITICO: Falha ao salvar configuracao!\r\n");
-        Controller_SetScreen(MSG_ERROR);
-        DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
-        
-        while (DWIN_Driver_IsTxBusy()) {
-            DWIN_TX_Pump();
-        }
-        
-        return false;
-    }
 }

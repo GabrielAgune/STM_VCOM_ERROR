@@ -176,6 +176,7 @@ static void Task_Handle_High_Frequency_Polling(void) {
     DWIN_TX_Pump();
 		CLI_Process();
     DWIN_Driver_Process();
+		Gerenciador_Config_Run_FSM();
     Servos_Process();
 }
 
