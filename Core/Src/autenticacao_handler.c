@@ -1,4 +1,9 @@
 #include "autenticacao_handler.h"
+#include "dwin_driver.h"
+#include "controller.h"
+#include "dwin_parser.h"
+#include "gerenciador_configuracoes.h"
+#include "display_handler.h"
 
 //================================================================================
 // Definições Internas (Tipos de Resultado e Estado)
@@ -28,7 +33,7 @@ static char s_nova_senha_temporaria[MAX_SENHA_LEN + 1];
 //================================================================================
 static AuthResult_t auth_handle_login_logic(const uint8_t* dwin_data, uint16_t len);
 static AuthResult_t auth_handle_set_password_logic(const uint8_t* dwin_data, uint16_t len);
-static bool Executar_Salvamento_Senha_Com_Feedback(void);
+// A função 'Executar_Salvamento_Senha_Com_Feedback' foi REMOVIDA daqui.
 
 //================================================================================
 // Funções Públicas (Processadores de Evento)
@@ -48,9 +53,9 @@ void Auth_ProcessLoginEvent(const uint8_t* dwin_data, uint16_t len)
         case AUTH_RESULT_FAIL:
             Controller_SetScreen(SENHA_ERRADA);
             break;
-				case AUTH_RESULT_SERVICE:
-						Controller_SetScreen(TELA_SERVICO);
-						break;
+		case AUTH_RESULT_SERVICE:
+			Controller_SetScreen(TELA_SERVICO);
+			break;
         case AUTH_RESULT_ERROR:
         default:
             Controller_SetScreen(MSG_ERROR);
@@ -68,12 +73,15 @@ void Auth_ProcessSetPasswordEvent(const uint8_t* dwin_data, uint16_t len)
     {
         case AUTH_RESULT_OK:
             // ============================================================================
-            // PROTEÇÃO DWIN: Salvamento com feedback visual
+            // SALVAMENTO ASSÍNCRONO (Refatorado)
             // ============================================================================
-            if (Executar_Salvamento_Senha_Com_Feedback()) {
-                printf("Auth: Senha salva com sucesso.\r\n");
-            }
+            // A lógica de salvamento bloqueante foi removida.
+            // Agora, apenas chamamos a FSM de feedback do display_handler.
+            // O Gerenciador_Config_Set_Senha() já foi chamado na lógica interna.
+            DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, "Senha alterada!");
+            printf("Auth: Solicitacao de salvamento de senha enviada para a FSM.\r\n");
             break;
+            
         case AUTH_RESULT_PENDING_CONFIRMATION:
             Controller_SetScreen(TELA_SET_PASS_AGAIN);
             break;
@@ -127,12 +135,12 @@ static AuthResult_t auth_handle_login_logic(const uint8_t* dwin_data, uint16_t l
         printf("Auth: Senha correta!\r\n");
         return AUTH_RESULT_OK;
     } 
-		else if(strcmp(senha_digitada, "GHK@123") == 0)
-		{
-				printf("Auth: Entrando na tela de Servico!\r\n");
+	else if(strcmp(senha_digitada, "GHK@123") == 0)
+	{
+		printf("Auth: Entrando na tela de Servico!\r\n");
         return AUTH_RESULT_SERVICE;
-		}
-		else {
+	}
+	else {
         printf("Auth: Senha incorreta. Digitado: '%s'\r\n", senha_digitada);
         return AUTH_RESULT_FAIL;
     }
@@ -181,40 +189,5 @@ static AuthResult_t auth_handle_set_password_logic(const uint8_t* dwin_data, uin
         default:
             s_estado_senha_atual = ESTADO_SENHA_OCIOSO;
             return AUTH_RESULT_ERROR;
-    }
-}
-
-/**
- * @brief NOVA FUNÇÃO: Executa salvamento da senha com feedback visual.
- * @return true se o salvamento foi bem-sucedido, false caso contrário.
- */
-static bool Executar_Salvamento_Senha_Com_Feedback(void)
-{
-    
-    Controller_SetScreen(MSG_ALERTA);
-    DWIN_Driver_WriteString(VP_MESSAGES, "Salvando senha...", 17);
-    
-    while (DWIN_Driver_IsTxBusy()) {
-        DWIN_TX_Pump();
-    }
-    HAL_Delay(100);
-    
-    // Salva com proteção DWIN
-    if (Gerenciador_Config_Salvar_Agora()) {
-        Controller_SetScreen(TELA_CONFIGURAR);
-        DWIN_Driver_WriteString(VP_MESSAGES, "Senha alterada!", 15);
-        
-        while (DWIN_Driver_IsTxBusy()) {
-            DWIN_TX_Pump();
-        }
-        return true;
-    } else {
-        Controller_SetScreen(MSG_ERROR);
-        DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
-        
-        while (DWIN_Driver_IsTxBusy()) {
-            DWIN_TX_Pump();
-        }
-        return false;
     }
 }

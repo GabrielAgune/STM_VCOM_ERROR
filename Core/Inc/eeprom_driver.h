@@ -53,7 +53,7 @@ bool EEPROM_Driver_IsReady(void);
 
 /*
 ==================================================
-  API PÚBLICA - FUNÇÕES BLOQUEANTES (BLOCKING)
+  API PÚBLICA - FUNÇÕES BLOQUEANTES (Testes)
 ==================================================
 */
 

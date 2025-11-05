@@ -64,7 +64,7 @@ static struct {
     I2C_HandleTypeDef*  i2c_handle;        
     EepromFsmState_t    state;            
     const uint8_t*      p_data;                // Ponteiro para os DADOS NA RAM.
-    uint16_t            current_addr;     // Endereço de escrita ATUAL NA EEPROM. (CORRIGIDO)
+    uint16_t            current_addr;          // Endereço de escrita ATUAL NA EEPROM. 
     uint16_t            bytes_remaining;  
     uint32_t            delay_start_tick; 
     bool                error_flag;       
@@ -93,7 +93,7 @@ static void EEPROM_Driver_ResetPeripheral(void) {
     }
     printf("EEPROM Driver: Resetando perifrico I2C...\r\n");
     HAL_I2C_DeInit(s_fsm.i2c_handle);
-    HAL_Delay(5); // Pequena espera para estabilização
+    HAL_Delay(5);
     HAL_I2C_Init(s_fsm.i2c_handle);
 }
 
@@ -119,7 +119,6 @@ bool EEPROM_Driver_IsReady(void) {
     }
 
     if (HAL_I2C_IsDeviceReady(s_fsm.i2c_handle, EEPROM_I2C_ADDR, 2, 100) != HAL_OK) {
-        // Se falhar, tenta resetar o barramento e verificar novamente
         EEPROM_Driver_ResetPeripheral();
         return (HAL_I2C_IsDeviceReady(s_fsm.i2c_handle, EEPROM_I2C_ADDR, 2, 100) == HAL_OK);
     }
@@ -128,7 +127,7 @@ bool EEPROM_Driver_IsReady(void) {
 
 /*
 ==================================================
-  API PÚBLICA - FUNÇÕES BLOQUEANTES (BLOCKING)
+  API PÚBLICA - FUNÇÕES BLOQUEANTES (Testes)
 ==================================================
 */
 
@@ -140,7 +139,6 @@ bool EEPROM_Driver_Read_Blocking(uint16_t addr, uint8_t *data, uint16_t size) {
     }
 
     if (HAL_I2C_Mem_Read(s_fsm.i2c_handle, EEPROM_I2C_ADDR, addr, I2C_MEMADD_SIZE_16BIT, data, size, 1000) != HAL_OK) {
-        // Se a leitura falhar, tenta resetar e ler novamente
         EEPROM_Driver_ResetPeripheral();
         return (HAL_I2C_Mem_Read(s_fsm.i2c_handle, EEPROM_I2C_ADDR, addr, I2C_MEMADD_SIZE_16BIT, data, size, 1000) == HAL_OK);
     }
@@ -157,51 +155,42 @@ bool EEPROM_Driver_Write_Blocking(uint16_t addr, const uint8_t *data, uint16_t s
     const uint8_t max_retries = 3;    // Número máximo de tentativas por chunk
     const uint32_t timeout_ms = 1000; // Timeout para a operação I2C
     
-    // NOTA: O tamanho da página de 32 bytes é usado aqui (ex: 24C32/64).
-    // A FSM assíncrona usa o define EEPROM_PAGE_SIZE (128) do .h.
     const uint16_t page_size = EEPROM_PAGE_SIZE;
 
     uint16_t bytes_written = 0;
     while (bytes_written < size) {
-        // 1. Calcula o tamanho do chunk, respeitando o limite da página
+
         uint16_t bytes_on_page = addr % page_size;
         uint16_t bytes_to_write_now = page_size - bytes_on_page;
 
-        // 2. Limita o chunk ao total de dados restantes
         if (bytes_to_write_now > (size - bytes_written)) {
             bytes_to_write_now = size - bytes_written;
         }
 
         bool success = false;
         for (uint8_t retry = 0; retry < max_retries; retry++) {
-            // 3. Espera a EEPROM estar pronta (caso esteja em ciclo de escrita)
             if (HAL_I2C_IsDeviceReady(s_fsm.i2c_handle, EEPROM_I2C_ADDR, 2, 100) != HAL_OK) {
                 HAL_Delay(5); // Espera se dispositivo ocupado
                 continue;
             }
 
-            // 4. Tenta escrever o chunk de dados
             if (HAL_I2C_Mem_Write(s_fsm.i2c_handle, EEPROM_I2C_ADDR, addr, I2C_MEMADD_SIZE_16BIT, (uint8_t*)(data + bytes_written), bytes_to_write_now, timeout_ms) == HAL_OK) {
                 success = true;
-                break; // Sucesso, sai do loop de tentativas
+                break; 
             }
 
-            // Se falhou, espera um pouco antes de tentar novamente
             HAL_Delay(10);
         }
 
         if (!success) {
             printf("EEPROM Write ERROR: Falha persistente ao escrever no endereco 0x%04X\r\n", addr);
             EEPROM_Driver_ResetPeripheral();
-            return false; // Se todas as tentativas falharem, aborta
+            return false; 
         }
 
-        // 5. Atualiza os ponteiros para a próxima iteração
         bytes_written += bytes_to_write_now;
         addr += bytes_to_write_now;
 
-        // 6. AGUARDA (Polling) a EEPROM completar o ciclo de escrita interno (tWR).
-        // Esta é a parte bloqueante mais demorada (até 5ms).
         while(HAL_I2C_IsDeviceReady(s_fsm.i2c_handle, EEPROM_I2C_ADDR, 5, 100) != HAL_OK);
     }
 
@@ -223,7 +212,7 @@ bool EEPROM_Driver_IsBusy(void) {
             current_state != FSM_ERROR);
 }
 
-// Inicia uma operação de escrita assíncrona (não-bloqueante).
+// Inicia uma operação de escrita assíncrona.
 bool EEPROM_Driver_Write_Async_Start(uint16_t addr, const uint8_t *data, uint16_t size) {
     if (EEPROM_Driver_IsBusy() || data == NULL || size == 0) {
         return false;
@@ -242,17 +231,11 @@ bool EEPROM_Driver_Write_Async_Start(uint16_t addr, const uint8_t *data, uint16_
 void EEPROM_Driver_FSM_Process(void) {
     switch (s_fsm.state) {
         case FSM_WRITE_CHUNK:
-            // Se não há mais bytes, terminamos.
             if (s_fsm.bytes_remaining == 0) {
                 s_fsm.state = FSM_FINISHED;
                 break;
             }
 
-            // --- CÁLCULO DE ENDEREÇO CORRIGIDO ---
-            // O bug original estava aqui. Agora usamos o 'current_addr' 
-            // rastreado pela FSM.
-            
-            // Calcula o tamanho do chunk, respeitando o limite da página (do .h)
             uint16_t chunk_size = EEPROM_PAGE_SIZE - (s_fsm.current_addr % EEPROM_PAGE_SIZE);
 
             // Limita o chunk ao total de dados restantes
@@ -265,25 +248,18 @@ void EEPROM_Driver_FSM_Process(void) {
                 s_fsm.error_flag = true;
                 s_fsm.state = FSM_ERROR;
             } else {
-                // Avança os ponteiros de dados
                 s_fsm.p_data += chunk_size;
                 s_fsm.bytes_remaining -= chunk_size;
-                s_fsm.current_addr += chunk_size; // <<< CORREÇÃO AQUI: Atualiza o endereço da EEPROM para o próximo chunk.
-                
-                // Aguarda a interrupção (TxCplt ou Error)
+                s_fsm.current_addr += chunk_size; 
                 s_fsm.state = FSM_WAIT_I2C_IT;
             }
             break;
 
         case FSM_WAIT_I2C_IT:
-            // A interrupção de I2C (TxCplt ou Error) irá mudar o estado.
-            // Não há nada a fazer aqui no loop principal.
             break;
 
         case FSM_WAIT_PAGE_WRITE_DELAY:
-            // Aguarda o tempo de escrita da página (tWR) ter passado
             if (HAL_GetTick() - s_fsm.delay_start_tick >= EEPROM_WRITE_TIME_MS) {
-                // Tempo esgotado, volta para escrever o próximo chunk
                 s_fsm.state = FSM_WRITE_CHUNK;
             }
             break;
@@ -292,7 +268,6 @@ void EEPROM_Driver_FSM_Process(void) {
         case FSM_FINISHED:
         case FSM_ERROR:
         default:
-            // Nenhum processamento necessário nestes estados
             break;
     }
 }
@@ -319,9 +294,7 @@ bool EEPROM_Driver_GetAndClearErrorFlag(void) {
  * @param hi2c Handle I2C que gerou a interrupção.
  */
 void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c) {
-    // Verifica se a interrupção é do nosso I2C e se a FSM estava esperando por ela
     if (hi2c->Instance == s_fsm.i2c_handle->Instance && s_fsm.state == FSM_WAIT_I2C_IT) {
-        // O chunk foi enviado. Agora precisamos esperar o tWR (tempo de escrita)
         s_fsm.delay_start_tick = HAL_GetTick();
         s_fsm.state = FSM_WAIT_PAGE_WRITE_DELAY;
     }

@@ -1,10 +1,6 @@
 #ifndef AUTENTICACAO_HANDLER_H
 #define AUTENTICACAO_HANDLER_H
 
-#include "dwin_driver.h"
-#include "controller.h"
-#include "dwin_parser.h"
-#include "gerenciador_configuracoes.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>

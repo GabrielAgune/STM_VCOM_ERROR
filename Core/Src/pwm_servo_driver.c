@@ -49,7 +49,6 @@ HAL_StatusTypeDef PWM_Servo_Init(Servo_t *servo)
         return HAL_ERROR;
     }
 
-    // Inicia o sinal PWM no canal do timer especificado na estrutura do servo.
     return HAL_TIM_PWM_Start(servo->htim, servo->channel);
 }
 
@@ -64,9 +63,7 @@ void PWM_Servo_SetAngle(Servo_t *servo, float angle)
     // Converte o ângulo desejado para o valor bruto do registrador CCR.
     uint32_t ccr_value = map_angle_to_ccr(servo, angle);
 
-    // Define o valor de comparação do timer, o que altera a largura do pulso
-    // e, consequentemente, move o servo para a posição desejada.
-    __HAL_TIM_SET_COMPARE(servo->htim, servo->channel, ccr_value);
+    __HAL_TIM_SET_COMPARE(servo->htim, servo->channel, ccr_value); // move o servo para a posição desejada.
 }
 
 // Para a geração de PWM para um servo específico.

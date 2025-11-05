@@ -12,8 +12,6 @@
 
 
 // Variáveis de estado para a lógica LOCAL (Seleção de Grão)
-static int8_t s_indice_grao_selecionado = 0;
-static bool s_em_tela_de_selecao = false;
 static int16_t received_value = 0;
 static uint16_t s_current_screen_id = PRINCIPAL; 
 static void Handle_Escape_Navigation(uint16_t received_value);

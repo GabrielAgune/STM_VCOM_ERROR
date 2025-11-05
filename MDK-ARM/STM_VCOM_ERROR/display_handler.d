@@ -40,8 +40,8 @@ stm_vcom_error/display_handler.o: ..\Core\Src\display_handler.c \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd_ex.h \
   ..\Core\Inc\controller.h ..\Core\Inc\rtc.h ..\Core\Inc\rtc_driver.h \
   ..\Core\Inc\gerenciador_configuracoes.h ..\Core\Inc\eeprom_driver.h \
-  ..\Core\Inc\autenticacao_handler.h ..\Core\Inc\dwin_parser.h \
-  ..\Core\Inc\rtc_handler.h ..\Core\Inc\graos_handler.h \
+  ..\Core\Inc\autenticacao_handler.h ..\Core\Inc\rtc_handler.h \
+  ..\Core\Inc\dwin_parser.h ..\Core\Inc\graos_handler.h \
   ..\Core\Inc\app_manager.h ..\Core\Inc\i2c.h ..\Core\Inc\usart.h \
   ..\Core\Inc\crc.h ..\Core\Inc\tim.h ..\Core\Inc\pwm_servo_driver.h \
   ..\Core\Inc\cli_driver.h ..\Core\Inc\ads1232_driver.h \

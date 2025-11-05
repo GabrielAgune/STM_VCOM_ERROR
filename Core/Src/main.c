@@ -56,6 +56,7 @@
 /* USER CODE BEGIN PV */
 uint8_t usb_rx_buffer[64];
 uint8_t usb_tx_buffer[128]; 
+void USB_Process(void);
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -125,7 +126,20 @@ int main(void)
     /* USER CODE BEGIN 3 */
 		
 		//USB
-    ux_device_stack_tasks_run();
+    USB_Process();
+		CLI_TX_Pump(); 
+
+		//Sistema
+		App_Manager_Process();
+
+	}
+		
+  /* USER CODE END 3 */
+}
+
+void USB_Process(void)
+{
+	ux_device_stack_tasks_run();
 		
     ULONG bytes_received = 0;
     USBD_CDC_ACM_Receive(usb_rx_buffer, sizeof(usb_rx_buffer), &bytes_received);
@@ -137,15 +151,6 @@ int main(void)
         CLI_Receive_Char(usb_rx_buffer[i]);
       }
     }
-
-		CLI_TX_Pump(); 
-
-		//Sistema
-		App_Manager_Process();
-
-	}
-		
-  /* USER CODE END 3 */
 }
 
 /**

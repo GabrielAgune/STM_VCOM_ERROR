@@ -45,8 +45,8 @@ stm_vcom_error/app_manager.o: ..\Core\Src\app_manager.c \
   ..\Core\Inc\pcb_frequency.h ..\Core\Inc\temp_sensor.h \
   ..\Core\Inc\servo_controle.h ..\Core\Inc\controller.h \
   ..\Core\Inc\rtc_driver.h ..\Core\Inc\gerenciador_configuracoes.h \
-  ..\Core\Inc\autenticacao_handler.h ..\Core\Inc\dwin_parser.h \
-  ..\Core\Inc\rtc_handler.h ..\Core\Inc\display_handler.h \
+  ..\Core\Inc\autenticacao_handler.h ..\Core\Inc\rtc_handler.h \
+  ..\Core\Inc\dwin_parser.h ..\Core\Inc\display_handler.h \
   ..\Core\Inc\medicao_handler.h ..\Core\Inc\relato.h \
   ..\Core\Inc\graos_handler.h \
   ..\Middlewares\ST\usbx\common\core\inc\ux_api.h \

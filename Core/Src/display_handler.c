@@ -1,21 +1,20 @@
 /*******************************************************************************
  * @file        display_handler.c
  * @brief       Implementação do Handler de Display.
- * @version     3.0 (FSM de Feedback Assíncrono)
- * @author      Gemini (Refatorado)
+ * @author      Gabriel Agune
  * @details     Contém as FSMs não-bloqueantes para a sequência de medição,
  * atualizações periódicas e feedback visual de salvamento.
  ******************************************************************************/
 
 #include "display_handler.h"
-#include "dwin_parser.h" // Dependência movida do .h para o .c
+#include "dwin_parser.h" 
 
 //================================================================================
 // Definições, Enums e Variáveis Estáticas
 //================================================================================
 
-#define DWIN_VP_ENTRADA_TELA 0x0050 // Valor padrão enviado pelo DWIN ao entrar em uma tela de edição
-#define DWIN_VP_ENTRADA_SERVICO 0x0000
+#define DWIN_VP_ENTRADA_TELA 0x0050 // Valor padrão enviado para acessar funcionalidades da tela de configuracao (Definido no DGUSII)
+#define DWIN_VP_ENTRADA_SERVICO 0x0000 // Valor padrão enviado para acessar funcionalidades da tela de servico (Definido no DGUSII)
 
 // --- Máquina de Estados para a Sequência de Medição ---
 typedef enum {
@@ -66,7 +65,7 @@ static bool s_printing_enabled = true;
 static void UpdateMonitorScreen(void);
 static void UpdateClockOnMainScreen(void);
 static void ProcessMeasurementSequenceFSM(void);
-static void ProcessFeedbackFSM(void); // <<< NOVA FUNÇÃO
+static void ProcessFeedbackFSM(void);
 
 //================================================================================
 // Implementação das Funções Públicas
@@ -91,22 +90,20 @@ void DisplayHandler_Process(void) {
 }
 
 /**
- * @brief (NOVA FUNÇÃO PÚBLICA) Inicia a sequência de feedback de salvamento.
+ * @brief Inicia a sequência de feedback de salvamento.
  * @details Esta função é NÃO-BLOQUEANTE.
  * @return true se o processo foi iniciado, false se já estava ocupado.
  */
 bool DisplayHandler_StartSaveFeedback(uint16_t return_screen, const char* success_msg)
 {
     if (s_feedback_state != FB_STATE_IDLE) {
-        return false; // Já está ocupado salvando
+        return false; 
     }
 
     printf("Display: Iniciando feedback de salvamento. Retorno: %u\r\n", return_screen);
 
-    // Marca os dados como pendentes para a FSM do gerenciador
     Gerenciador_Config_Marcar_Como_Pendente();
 
-    // Configura a FSM de feedback
     s_feedback_return_screen = return_screen;
     strncpy(s_feedback_success_msg, success_msg, sizeof(s_feedback_success_msg) - 1);
     s_feedback_state = FB_STATE_SHOW_SAVING;

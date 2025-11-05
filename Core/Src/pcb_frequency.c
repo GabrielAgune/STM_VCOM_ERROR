@@ -6,7 +6,6 @@
  */
 void Frequency_Init(void)
 {
-  // Inicia o timer 2. Ele vai contar os pulsos em background.
   HAL_TIM_Base_Start(&htim2);
 }
 
