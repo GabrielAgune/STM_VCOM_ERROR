@@ -42,7 +42,7 @@ static const uint8_t TEMP_UPDATE_PERIOD_SECONDS = 5;
 static uint32_t s_clock_last_tick = 0;
 static const uint32_t CLOCK_UPDATE_INTERVAL_MS = 1000;
 
-// --- FSM DE FEEDBACK DE SALVAMENTO (NOVO) ---
+// --- FSM DE FEEDBACK DE SALVAMENTO ---
 typedef enum {
     FB_STATE_IDLE,              // Ocioso
     FB_STATE_SHOW_SAVING,       // Mostra "Salvando..."

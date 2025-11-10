@@ -119,9 +119,6 @@ static void Entrar_No_Estado(uint8_t indice_estado)
     s_indice_estado_atual = indice_estado;
     const Passo_Processo_t* passo = &s_fluxo_processo[indice_estado];
 
-    // Aqui, futuramente, chamaremos uma função do app_manager para notificar a UI
-    // Ex: App_Manager_On_Servo_Step_Changed(passo->id_passo);
-
     if (passo->acao != NULL)
     {
         passo->acao();
@@ -131,8 +128,6 @@ static void Entrar_No_Estado(uint8_t indice_estado)
 
     if (passo->id_passo == SERVO_STEP_FINISHED)
     {
-       // Aqui, futuramente, chamaremos uma função do app_manager para notificar o fim
-       // Ex: App_Manager_On_Servo_Sequence_Finished();
     }
 }
 
