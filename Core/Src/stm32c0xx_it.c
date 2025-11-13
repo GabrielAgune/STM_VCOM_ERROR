@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include "dwin_driver.h"
+#include "bq_soc.h"
 #include "ads1232_driver.h"
 /* USER CODE END Includes */
 
@@ -137,7 +138,7 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+	bq_soc_systick_callback();
   /* USER CODE END SysTick_IRQn 1 */
 }
 

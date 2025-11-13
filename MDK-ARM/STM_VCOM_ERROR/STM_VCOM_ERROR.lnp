@@ -138,6 +138,8 @@
 "stm_vcom_error\pcb_frequency.o"
 "stm_vcom_error\ads1232_driver.o"
 "stm_vcom_error\temp_sensor.o"
+"stm_vcom_error\bq25622_driver.o"
+"stm_vcom_error\bq_soc.o"
 "stm_vcom_error\gerenciador_configuracoes.o"
 "stm_vcom_error\gxxx_equacoes.o"
 "stm_vcom_error\servo_controle.o"
@@ -150,6 +152,7 @@
 "stm_vcom_error\autenticacao_handler.o"
 "stm_vcom_error\rtc_handler.o"
 "stm_vcom_error\graos_handler.o"
+"stm_vcom_error\battery_handler.o"
 --library_type=microlib --strict --scatter "STM_VCOM_ERROR\STM_VCOM_ERROR.sct"
 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

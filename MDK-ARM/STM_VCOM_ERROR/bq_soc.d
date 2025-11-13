@@ -1,5 +1,4 @@
-stm_vcom_error/display_handler.o: ..\Core\Src\display_handler.c \
-  ..\Core\Inc\display_handler.h ..\Core\Inc\dwin_driver.h \
+stm_vcom_error/bq_soc.o: ..\Core\Src\bq_soc.c ..\Core\Inc\bq_soc.h \
   ..\Core\Inc\main.h ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_system.h \
   ..\Drivers\CMSIS\Device\ST\STM32C0xx\Include\stm32c0xx.h \
@@ -38,7 +37,4 @@ stm_vcom_error/display_handler.o: ..\Core\Src\display_handler.c \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_usb.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd_ex.h \
-  ..\Core\Inc\controller.h ..\Core\Inc\gerenciador_configuracoes.h \
-  ..\Core\Inc\eeprom_driver.h ..\Core\Inc\medicao_handler.h \
-  ..\Core\Inc\rtc_driver.h ..\Core\Inc\rtc.h ..\Core\Inc\relato.h \
-  ..\Core\Inc\temp_sensor.h ..\Core\Inc\dwin_parser.h
+  ..\Core\Inc\i2c.h ..\Core\Inc\bq25622_driver.h

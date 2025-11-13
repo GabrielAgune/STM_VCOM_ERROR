@@ -15,6 +15,7 @@
 #include "ux_device_stack.h" // Para a função de disconnect/uninit
 #include "usb.h"             // Para a função MX_USB_PCD_Init e o handle
 #include "app_usbx_device.h"
+#include "battery_handler.h" 
 
 extern PCD_HandleTypeDef hpcd_USB_DRD_FS;
 //================================================================================
@@ -70,6 +71,7 @@ void App_Manager_Init(void) {
     Servos_Init();
     Frequency_Init();
     ADS1232_Init();
+		Battery_Handler_Init(&hi2c1);
     Gerenciador_Config_Validar_e_Restaurar();
     Medicao_Set_Densidade(71.0);
     Medicao_Set_Umidade(25.73);
@@ -79,6 +81,7 @@ void App_Manager_Process(void) {
 
     switch (s_current_state) {
         case STATE_ACTIVE:
+						Battery_Handler_Process(); 
             Task_Handle_High_Frequency_Polling();
             Medicao_Process();
             DisplayHandler_Process();

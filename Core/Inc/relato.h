@@ -17,6 +17,7 @@ extern void Cabecalho(void);
 
 extern void Relatorio_Printer (void);
 
+extern void Relatorio_QRCode_WhoAmI(void);
 
 
 #endif /* RELATO_H */

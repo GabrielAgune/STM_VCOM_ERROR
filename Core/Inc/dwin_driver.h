@@ -1,18 +1,18 @@
 /**
  * ============================================================================
  * @file    dwin_driver.h
- * @brief   Interface pública do driver não-bloqueante para o Display DWIN.
+ * @brief   Interface p?blica do driver n?o-bloqueante para o Display DWIN.
  *
- * Este driver gerencia a comunicação com displays DWIN via UART, utilizando
- * DMA e detecção de linha ociosa (IDLE line) para recepção (RX) e
- * "bombeamento" via DMA para transmissão (TX).
+ * Este driver gerencia a comunica??o com displays DWIN via UART, utilizando
+ * DMA e detec??o de linha ociosa (IDLE line) para recep??o (RX) e
+ * "bombeamento" via DMA para transmiss?o (TX).
  *
  * @author  Gabriel Agune
  * ============================================================================
  */
 
-#ifndef __DWIN_DRIVER_H
-#define __DWIN_DRIVER_H
+#ifndef __DRIVER_DWIN_H
+#define __DRIVER_DWIN_H
 
 #include "main.h"
 #include <stdbool.h>
@@ -20,17 +20,17 @@
 
 /*
 ==================================================
-  DEFINIÇÕES DE BUFFERS
+  DEFINI??ES DE BUFFERS
 ==================================================
 */
 
-#define DWIN_RX_BUFFER_SIZE         64   //Tamanho do buffer de recepção (RX) do DMA. (Deve ser >= que o maior pacote esperado) 
-#define DWIN_TX_FIFO_SIZE          512   //Tamanho do FIFO circular de software para transmissão (TX). 
-#define DWIN_TX_DMA_BUFFER_SIZE     64   //Tamanho do buffer de hardware (DMA) para transmissão (TX). (Tamanho do "chunk" enviado por vez) 
+#define DWIN_RX_BUFFER_SIZE         64   //Tamanho do buffer de recep??o (RX) do DMA. (Deve ser >= que o maior pacote esperado) 
+#define DWIN_TX_FIFO_SIZE          512   //Tamanho do FIFO circular de software para transmiss?o (TX). 
+#define DWIN_TX_DMA_BUFFER_SIZE    256   //Tamanho do buffer de hardware (DMA) para transmiss?o (TX). (Tamanho do "chunk" enviado por vez) 
 
 /*
 ==================================================
-  DEFINIÇÕES DE COMANDOS DWIN (Exemplos)
+  DEFINI??ES DE COMANDOS DWIN (Exemplos)
 ==================================================
 */
 
@@ -39,24 +39,25 @@ static const uint8_t CMD_AJUSTAR_BACKLIGHT_100[] = {0x5A, 0xA5, 0x05, 0x82, 0x00
 
 /*
 ==================================================
-  DEFINIÇÕES DE ENDEREÇOS VP (Variáveis)
+  DEFINI??ES DE ENDERE?OS VP (Vari?veis)
 ==================================================
 */
 enum
 {
-    // Váriaveis Globais
+    // V?riaveis Globais
     VP_DATA_HORA     = 0x0010,
     VP_FIRMWARE      = 0x1000,
     VP_HARDWARE      = 0x1010,
     VP_FIRM_IHM      = 0x1020,
     VP_SERIAL        = 0x1030,
 
+		VP_ICON_BAT      = 0x1100,
     VP_REGRESSIVA    = 0x1500,
     // Data e hora
     HORA_SISTEMA     = 0x2000,
     DATA_SISTEMA     = 0x2010,
 
-    // Variáveis relatório de medidas
+    // Vari?veis relat?rio de medidas
     GRAO_A_MEDIR     = 0x2070,
     UMIDADE_1_CASA   = 0x2100,
     UMIDADE_2_CASAS  = 0x2100,
@@ -69,7 +70,7 @@ enum
     DATA_VAL         = 0x2170,
     RESULTADO_MEDIDA = 0x2180,
 
-    // Váriaveis sistema
+    // V?riaveis sistema
     PESO             = 0x2190,
     AD_BALANCA       = 0x2200,
     FAT_CAL_BAL      = 0x2210,
@@ -80,6 +81,14 @@ enum
     ESCALA_A         = 0x2260,
     PHOTDIODE        = 0x2270,
     GAVETA           = 0x2280,
+		
+		//ADD
+		VP_VBUS          = 0x2290,
+		VP_VBAT          = 0x2300,
+		VP_IBAT          = 0x2310,
+		VP_TEMP          = 0x2320,
+		VP_PERC          = 0x2330,
+		
     VP_MESSAGES      = 0x4096,
 
     VP_SEARCH_INPUT         = 0x8100,
@@ -100,7 +109,7 @@ enum
 
 /*
 ==================================================
-  DEFINIÇÕES DE ENDEREÇOS DE CONTROLE (Botões)
+  DEFINI??ES DE ENDERE?OS DE CONTROLE (Bot?es)
 ==================================================
 */
 
@@ -113,8 +122,9 @@ enum
     SELECT_GRAIN      = 0x2040,
     PRINT             = 0x2050,
     DESCARTA_AMOSTRA  = 0x2060,
+		SHOW_MEDIDA       = 0x2190,
 
-    // Menu Configuração
+    // Menu Configura??o
     ENTER_SET_TIME    = 0X3010,
     SET_TIME          = 0x300F,
     NR_REPETICOES     = 0x3020,
@@ -126,7 +136,7 @@ enum
     COMPANY           = 0x3090,
     ABOUT_SYS         = 0x3100,
 
-    // Menu Serviço
+    // Menu Servi?o
     TECLAS            = 0X4080,
     ESCAPE            = 0X5000,
     PRESET_PRODUCT    = 0X7010,
@@ -140,11 +150,12 @@ enum
     MONITOR           = 0X7090,
     SERVICE_REPORT    = 0X7100,
     SYSTEM_BURNIN     = 0X7110,
+		BATTERY_INFORMATION = 0x7120,
 };
 
 /*
 ==================================================
-  DEFINIÇÕES DE IDs DE TELA (PIC)
+  DEFINI??ES DE IDs DE TELA (PIC)
 ==================================================
 */
 
@@ -210,17 +221,18 @@ enum
     SENHAS_DIFERENTES     =  64,
 
     TELA_PESQUISA         = 101,
+		TELA_BATERIA          = 104,
 };
 
 /*
 ==================================================
-  DEFINIÇÕES DE CALLBACK
+  DEFINI??ES DE CALLBACK
 ==================================================
 */
 
 
 /**
- * @brief Definição do ponteiro de função para o callback de recepção.
+ * @brief Defini??o do ponteiro de fun??o para o callback de recep??o.
  * @param buffer Ponteiro para o buffer contendo o pacote DWIN recebido.
  * @param len    O tamanho exato do pacote recebido.
  */
@@ -228,7 +240,7 @@ typedef void (*dwin_rx_callback_t)(const uint8_t* buffer, uint16_t len);
 
 /*
 ==================================================
-  PROTÓTIPOS DE FUNÇÕES PÚBLICAS
+  PROT?TIPOS DE FUN??ES P?BLICAS
 ==================================================
 */
 
@@ -236,38 +248,38 @@ typedef void (*dwin_rx_callback_t)(const uint8_t* buffer, uint16_t len);
 /**
  * @brief Inicializa o driver DWIN.
  * @param huart    Ponteiro para o handler da UART (HAL) configurada para DWIN.
- * @param callback Ponteiro para a função que tratará os pacotes recebidos.
+ * @param callback Ponteiro para a fun??o que tratar? os pacotes recebidos.
  */
 void DWIN_Driver_Init(UART_HandleTypeDef *huart, dwin_rx_callback_t callback);
 
 
 /**
- * @brief Processa a lógica de recepção (RX) do driver.
+ * @brief Processa a l?gica de recep??o (RX) do driver.
  * Verifica timeouts de pacotes e encaminha dados para o callback.
  */
 void DWIN_Driver_Process(void);
 
 
 /**
- * @brief Processa a lógica de transmissão (TX) do driver.
- * Verifica se há dados no FIFO de TX e inicia uma transação DMA
- * se a UART não estiver ocupada.
+ * @brief Processa a l?gica de transmiss?o (TX) do driver.
+ * Verifica se h? dados no FIFO de TX e inicia uma transa??o DMA
+ * se a UART n?o estiver ocupada.
  */
 void DWIN_TX_Pump(void);
 
 
 /**
- * @brief Verifica se o driver está atualmente ocupado transmitindo dados.
+ * @brief Verifica se o driver est? atualmente ocupado transmitindo dados.
  *
- * @return true se o FIFO de TX não está vazio ou o DMA de TX está ativo.
- * @return false se o driver está ocioso e pronto para novos comandos.
+ * @return true se o FIFO de TX n?o est? vazio ou o DMA de TX est? ativo.
+ * @return false se o driver est? ocioso e pronto para novos comandos.
  */
 bool DWIN_Driver_IsTxBusy(void);
 
 
 /*
 ==================================================
-  FUNÇÕES DE COMANDO DWIN
+  FUN??ES DE COMANDO DWIN
 ==================================================
 */
 
@@ -275,60 +287,60 @@ bool DWIN_Driver_IsTxBusy(void);
 /**
  * @brief Envia um comando para alterar a tela (PIC) no display.
  * @return true se o comando foi enfileirado com sucesso.
- * @return false se o FIFO de transmissão estava cheio.
+ * @return false se o FIFO de transmiss?o estava cheio.
  */
 bool DWIN_Driver_SetScreen(uint16_t screen_id);
 
 
 /**
- * @brief Escreve um valor inteiro de 16 bits (int16_t) em um endereço VP.
- * @param vp_address O endereço da variável (VP) no display.
+ * @brief Escreve um valor inteiro de 16 bits (int16_t) em um endere?o VP.
+ * @param vp_address O endere?o da vari?vel (VP) no display.
  * @param value      O valor de 16 bits a ser escrito.
  * @return true se o comando foi enfileirado com sucesso.
- * @return false se o FIFO de transmissão estava cheio.
+ * @return false se o FIFO de transmiss?o estava cheio.
  */
 bool DWIN_Driver_WriteInt(uint16_t vp_address, int16_t value);
 
 
 /**
- * @brief Escreve um valor inteiro de 32 bits (int32_t) em um endereço VP.
- * @param vp_address O endereço da variável (VP) no display.
+ * @brief Escreve um valor inteiro de 32 bits (int32_t) em um endere?o VP.
+ * @param vp_address O endere?o da vari?vel (VP) no display.
  * @param value      O valor de 32 bits a ser escrito.
  * @return true se o comando foi enfileirado com sucesso.
- * @return false se o FIFO de transmissão estava cheio.
+ * @return false se o FIFO de transmiss?o estava cheio.
  */
 bool DWIN_Driver_WriteInt32(uint16_t vp_address, int32_t value);
 
 
 /**
- * @brief Escreve uma string de texto ASCII em um endereço VP.
+ * @brief Escreve uma string de texto ASCII em um endere?o VP.
  * NOTA: O driver DWIN trata strings de forma especial, geralmente
- * preenchendo com 0xFF. Esta função abstrai isso.
+ * preenchendo com 0xFF. Esta fun??o abstrai isso.
  *
- * @param vp_address O endereço da variável (VP) no display.
+ * @param vp_address O endere?o da vari?vel (VP) no display.
  * @param text       Ponteiro para a string (terminada em nulo) a ser escrita.
- * @param max_len    O tamanho máximo (em bytes) que o VP suporta.
+ * @param max_len    O tamanho m?ximo (em bytes) que o VP suporta.
  * @return true se o comando foi enfileirado com sucesso.
- * @return false se o FIFO de transmissão estava cheio ou erro de parâmetros.
+ * @return false se o FIFO de transmiss?o estava cheio ou erro de par?metros.
  */
 bool DWIN_Driver_WriteString(uint16_t vp_address, const char* text, uint16_t max_len);
 
 
 /**
  * @brief Envia um buffer de bytes "crus" (raw) para o DWIN.
- * Útil para comandos não padronizados ou customizados.
+ * ?til para comandos n?o padronizados ou customizados.
  *
  * @param data   Ponteiro para o buffer de dados a ser enviado.
- * @param size   O número de bytes a serem enviados.
+ * @param size   O n?mero de bytes a serem enviados.
  * @return true se o comando foi enfileirado com sucesso.
- * @return false se o FIFO de transmissão estava cheio.
+ * @return false se o FIFO de transmiss?o estava cheio.
  */
 bool DWIN_Driver_WriteRawBytes(const uint8_t* data, uint16_t size);
 
 
 /**
  * @brief Retorna o contador de pacotes recebidos (para debug).
- * @return O número total de eventos de RX válidos desde a inicialização.
+ * @return O n?mero total de eventos de RX v?lidos desde a inicializa??o.
  */
 uint32_t DWIN_Driver_GetRxPacketCounter(void);
 
@@ -340,18 +352,18 @@ uint32_t DWIN_Driver_GetRxPacketCounter(void);
 
 
 /**
- * @brief Handler de conclusão de transmissão DMA (TX Cplt).
+ * @brief Handler de conclus?o de transmiss?o DMA (TX Cplt).
  * Deve ser chamado dentro de `HAL_UART_TxCpltCallback()`.
- * @param huart Ponteiro para o handler da UART que gerou a interrupção.
+ * @param huart Ponteiro para o handler da UART que gerou a interrup??o.
  */
 void DWIN_Driver_HandleTxCplt(UART_HandleTypeDef *huart);
 
 
 /**
- * @brief Handler de recepção DMA (RX Event - IDLE Line ou Buffer Full).
+ * @brief Handler de recep??o DMA (RX Event - IDLE Line ou Buffer Full).
  * Deve ser chamado dentro de `HAL_UARTEx_RxEventCallback()`.
- * @param huart Ponteiro para o handler da UART que gerou a interrupção.
- * @param size  O número de bytes recebidos neste evento.
+ * @param huart Ponteiro para o handler da UART que gerou a interrup??o.
+ * @param size  O n?mero de bytes recebidos neste evento.
  */
 void DWIN_Driver_HandleRxEvent(UART_HandleTypeDef *huart, uint16_t size);
 
@@ -367,11 +379,11 @@ void DWIN_Driver_HandleError(UART_HandleTypeDef *huart);
 
 /*
 ==================================================
-  FUNÇÕES (TODO / A Implementar)
+  FUN??ES (TODO / A Implementar)
 ==================================================
 */
-// Protótipos para futuras implementações
+// Prot?tipos para futuras implementa??es
 bool display_qr_code(const char* data_string);
 bool DWIN_Driver_Write_QR_String(uint16_t vp_address, const char* text, uint16_t max_len);
 
-#endif // __DWIN_DRIVER_H
+#endif // __DRIVER_DWIN_H

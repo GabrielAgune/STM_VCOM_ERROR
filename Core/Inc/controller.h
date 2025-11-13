@@ -1,20 +1,6 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include "main.h"
-#include "dwin_driver.h" // Necessário para ENUMs de Tela (PRINCIPAL, etc.)
-#include "rtc.h"
-#include "rtc_driver.h" 
-#include "gerenciador_configuracoes.h"
-#include "autenticacao_handler.h"
-#include "rtc_handler.h"
-#include "display_handler.h"
-#include "graos_handler.h"
-#include "app_manager.h"
-#include "relato.h"
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <stdint.h> // Adicionar para usar uint8_t e uint16_t
 #include <stdbool.h>
 

@@ -5,6 +5,21 @@
  ******************************************************************************/
 
 #include "controller.h"
+#include "main.h"
+#include "dwin_driver.h" // Necessário para ENUMs de Tela (PRINCIPAL, etc.)
+#include "rtc.h"
+#include "rtc_driver.h" 
+#include "gerenciador_configuracoes.h"
+#include "autenticacao_handler.h"
+#include "battery_handler.h"
+#include "rtc_handler.h"
+#include "display_handler.h"
+#include "graos_handler.h"
+#include "app_manager.h"
+#include "relato.h"
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 //================================================================================
 // Definições, Enums, Variáveis Estáticas e Protótipos
@@ -73,7 +88,7 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						case PRINT							:		Display_ProcessPrintEvent(received_value);                                             break;
             case OFF								:		Display_OFF(received_value);                                                           break;
 						case WAKEUP_CONFIRM_BTN :   App_Manager_Confirm_Wakeup();                                                          break;
-						
+						case SHOW_MEDIDA        :   Relatorio_QRCode_WhoAmI();                                                             break;
 						//Menu Configurar
             case SENHA_CONFIG				:		Auth_ProcessLoginEvent(data, len);                                                     break;
 						case ENTER_SET_TIME     :   Controller_SetScreen(TELA_SET_JUST_TIME);                                              break;
@@ -99,6 +114,8 @@ void Controller_DwinCallback(const uint8_t* data, uint16_t len)
 						case MONITOR						:		Controller_SetScreen(TELA_MONITOR_SYSTEM);                                             break;
 						case SERVICE_REPORT     :                                                                                          break;
 						case SYSTEM_BURNIN      :                                                                                          break;
+						
+						case BATTERY_INFORMATION:   Controller_SetScreen(TELA_BATERIA);                                                    break;
 						
 						case TECLAS							:		Graos_Handle_Navegacao(received_value);           																		 break;
 						case ESCAPE							:		Handle_Escape_Navigation(received_value);	                                  			     break;

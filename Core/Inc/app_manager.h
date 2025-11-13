@@ -16,6 +16,7 @@
 
 // Includes dos Nossos Módulos e Drivers
 #include "dwin_driver.h"
+#include "display_handler.h"
 #include "eeprom_driver.h"
 #include "pwm_servo_driver.h"
 #include "cli_driver.h"

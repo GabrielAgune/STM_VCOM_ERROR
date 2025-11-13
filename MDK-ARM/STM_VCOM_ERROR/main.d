@@ -50,12 +50,10 @@ stm_vcom_error/main.o: ..\Core\Src\main.c ..\Core\Inc\main.h \
   ..\USBX\App\ux_device_descriptors.h ..\USBX\Target\ux_stm32_config.h \
   ..\Middlewares\ST\usbx\common\usbx_stm32_device_controllers\ux_dcd_stm32.h \
   ..\Core\Inc\gpio.h ..\Core\Inc\app_manager.h ..\Core\Inc\dwin_driver.h \
-  ..\Core\Inc\eeprom_driver.h ..\Core\Inc\pwm_servo_driver.h \
+  ..\Core\Inc\display_handler.h ..\Core\Inc\controller.h \
+  ..\Core\Inc\gerenciador_configuracoes.h ..\Core\Inc\eeprom_driver.h \
+  ..\Core\Inc\medicao_handler.h ..\Core\Inc\rtc_driver.h \
+  ..\Core\Inc\relato.h ..\Core\Inc\temp_sensor.h \
+  ..\Core\Inc\dwin_parser.h ..\Core\Inc\pwm_servo_driver.h \
   ..\Core\Inc\cli_driver.h ..\Core\Inc\ads1232_driver.h \
-  ..\Core\Inc\pcb_frequency.h ..\Core\Inc\temp_sensor.h \
-  ..\Core\Inc\servo_controle.h ..\Core\Inc\controller.h \
-  ..\Core\Inc\rtc_driver.h ..\Core\Inc\gerenciador_configuracoes.h \
-  ..\Core\Inc\autenticacao_handler.h ..\Core\Inc\rtc_handler.h \
-  ..\Core\Inc\dwin_parser.h ..\Core\Inc\display_handler.h \
-  ..\Core\Inc\medicao_handler.h ..\Core\Inc\relato.h \
-  ..\Core\Inc\graos_handler.h
+  ..\Core\Inc\pcb_frequency.h ..\Core\Inc\servo_controle.h

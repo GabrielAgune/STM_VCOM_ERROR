@@ -38,4 +38,5 @@ stm_vcom_error/stm32c0xx_it.o: ..\Core\Src\stm32c0xx_it.c \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_usb.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd_ex.h \
   ..\Core\Inc\stm32c0xx_it.h ..\Core\Inc\dwin_driver.h \
+  ..\Core\Inc\bq_soc.h ..\Core\Inc\i2c.h ..\Core\Inc\bq25622_driver.h \
   ..\Core\Inc\ads1232_driver.h

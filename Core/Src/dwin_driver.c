@@ -335,6 +335,49 @@ uint32_t DWIN_Driver_GetRxPacketCounter(void)
     return s_rx_event_counter;
 }
 
+bool DWIN_Driver_Write_QR_String(uint16_t vp_address, const char* text, uint16_t max_len)
+{
+    if ((s_huart == NULL) || (text == NULL))
+    {
+        return false;
+    }
+    
+    size_t text_len = strlen(text);
+    if (text_len == 0) return true; // Nada a fazer
+
+    if (text_len > max_len)
+    {
+        text_len = max_len; // Trunca se for maior que o suportado pelo VP
+    }
+
+    // O payload  o comando (1) + endereo (2) + dados da string (text_len)
+    uint8_t frame_payload_len = 3u + (uint8_t)text_len;
+
+    // Tamanho total do frame a ser enviado
+    uint16_t total_frame_size = 3u + frame_payload_len;
+
+    // Buffer temporrio para montar o frame completo
+    uint8_t temp_frame_buffer[DWIN_TX_DMA_BUFFER_SIZE];
+    if (total_frame_size > DWIN_TX_DMA_BUFFER_SIZE) {
+        // A string  muito grande para o nosso buffer de montagem
+        return false;
+    }
+
+    // Monta o cabealho do frame DWIN
+    temp_frame_buffer[0] = 0x5A;
+    temp_frame_buffer[1] = 0xA5;
+    temp_frame_buffer[2] = frame_payload_len; 
+    temp_frame_buffer[3] = 0x82; // Comando de escrita no VP
+    temp_frame_buffer[4] = (uint8_t)(vp_address >> 8);
+    temp_frame_buffer[5] = (uint8_t)(vp_address & 0xFF);
+
+    // Copia a string de dados do QR Code para o frame
+    memcpy(&temp_frame_buffer[6], text, text_len);
+
+    // Envia o frame completo para o FIFO de transmisso
+    return DWIN_TX_Queue_Send_Bytes(temp_frame_buffer, total_frame_size);
+}
+
 /*
 ==================================================
   HANDLERS DE INTERRUPÇÃO (CALLBACKS DO HAL)

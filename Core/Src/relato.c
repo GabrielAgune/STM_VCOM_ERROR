@@ -2,12 +2,12 @@
 #include "gerenciador_configuracoes.h"
 #include "medicao_handler.h"
 #include "rtc_driver.h"
+#include "dwin_driver.h"
 #include "cli_driver.h"
 #include <stdio.h>
 
-// REMOVIDO: A variável global foi eliminada para economizar RAM estática.
-// Config_Aplicacao_t config_snapshot;
 
+static char qr_buffer[400];
 // Constantes para formatação (colocadas em Flash/ROM, não consomem RAM)
 const char Ejeta[] = "================================\n\r\n\r\n\r\n\r";
 const char Dupla[] = "\n\r================================\n\r";
@@ -21,17 +21,17 @@ void Who_am_i(void)
     Gerenciador_Config_Get_Serial(
 		serial, sizeof(serial));
 		
-    CLI_Printf(Dupla);
-    CLI_Printf("         G620_Teste_Gab\n\r");
-    CLI_Printf("     (c) GEHAKA, 2004-2025\n\r");
-    CLI_Printf(Linha);
-    CLI_Printf("CPU      =           STM32C071RB\n\r");
-    CLI_Printf("Firmware = %21s\r\n", FIRMWARE);
-    CLI_Printf("Hardware = %21s\r\n", HARDWARE);
-    CLI_Printf("Serial   = %21s\r\n", serial);
-    CLI_Printf(Linha);
-    CLI_Printf("Medidas  = %21d\n\r", 22);
-    CLI_Printf(Ejeta);
+    printf(Dupla);
+    printf("         G620_Teste_Gab\n\r");
+    printf("     (c) GEHAKA, 2004-2025\n\r");
+    printf(Linha);
+    printf("CPU      =           STM32C071RB\n\r");
+    printf("Firmware = %21s\r\n", FIRMWARE);
+    printf("Hardware = %21s\r\n", HARDWARE);
+    printf("Serial   = %21s\r\n", serial);
+    printf(Linha);
+    printf("Medidas  = %21d\n\r", 22);
+    printf(Ejeta);
 }
 
 void Assinatura(void)
@@ -55,42 +55,93 @@ void Assinatura(void)
 
 void Cabecalho(void)
 {
-    // MOVIDO: de global para local.
-    Config_Aplicacao_t config_snapshot;
-	Gerenciador_Config_Get_Config_Snapshot(&config_snapshot);
+    // Evita copiar toda a Config_Aplicacao_t para a pilha.
+    char serial[17] = {0};
+    Gerenciador_Config_Get_Serial(serial, sizeof(serial));
 
     printf(Dupla);
- 	printf("GEHAKA            G620_Teste_Gab\n\r");
+		printf("GEHAKA            G620_Teste_Gab\n\r");
     printf(Linha);
-	printf("Versao Firmware= %15s\n\r", FIRMWARE);
- 	printf("Numero de Serie= %15s\n\r", config_snapshot.nr_serial);
+	  printf("Versao Firmware= %15s\n\r", FIRMWARE);
+		printf("Numero de Serie= %15s\n\r", serial);
     printf(Linha);
 }
-
 void Relatorio_Printer (void)
 {
-    // MOVIDO: de global para local.
-    Config_Aplicacao_t config_snapshot;
-    Gerenciador_Config_Get_Config_Snapshot(&config_snapshot);
+    // Evita alocar Config_Aplicacao_t (~6KB) na pilha. Busque apenas o necess?rio.
+    uint16_t nr_decimals = Gerenciador_Config_Get_NR_Decimals();
+
+    uint8_t indice_grao_ativo = 0;
+    Gerenciador_Config_Get_Grao_Ativo(&indice_grao_ativo);
+
+    Config_Grao_t dados_grao_ativo;
+    Gerenciador_Config_Get_Dados_Grao(indice_grao_ativo, &dados_grao_ativo);
 
     DadosMedicao_t medicao_snapshot;
     Medicao_Get_UltimaMedicao(&medicao_snapshot);
 
-    const Config_Grao_t* dados_grao_ativo = &config_snapshot.graos[config_snapshot.indice_grao_ativo];
-
     Cabecalho();
 
-    printf("Produto       = %16s\n\r",  dados_grao_ativo->nome);
-  	printf("Versao Equacao= %10lu\n\r",   (unsigned long)dados_grao_ativo->id_curva);
-  	printf("Validade Curva= %13s\n\r", dados_grao_ativo->validade);
+    printf("Produto       = %16s\n\r",  dados_grao_ativo.nome);
+  	printf("Versao Equacao= %10lu\n\r",   (unsigned long)dados_grao_ativo.id_curva);
+  	printf("Validade Curva= %13s\n\r", dados_grao_ativo.validade);
   	printf("Amostra Numero= %8i\n\r",      4);
   	printf("Temp.Amostra .= %8.1f 'C\n\r", 22.0);
   	printf("Temp.Instru ..= %8.1f 'C\n\r", medicao_snapshot.Temp_Instru);
   	printf("Peso Amostra .= %8.1f g\n\r", medicao_snapshot.Peso);
   	printf("Densidade ....= %8.1f Kg/hL\n\r",  medicao_snapshot.Densidade);
     printf(Linha);
-  	printf("Umidade ......= %14.*f %%\n\r", (int)config_snapshot.nr_decimals, medicao_snapshot.Umidade);
+  	printf("Umidade ......= %14.*f %%\n\r", (int)nr_decimals, medicao_snapshot.Umidade);
   	printf(Linha);
 
   	Assinatura();
+}
+
+void Relatorio_QRCode_WhoAmI(void)
+{
+    char serial[17];
+    Gerenciador_Config_Get_Serial(serial, sizeof(serial));
+
+    uint16_t nr_decimals = Gerenciador_Config_Get_NR_Decimals();
+
+    uint8_t indice_grao = 0;
+    Gerenciador_Config_Get_Grao_Ativo(&indice_grao);
+
+    Config_Grao_t grao;
+    Gerenciador_Config_Get_Dados_Grao(indice_grao, &grao);
+
+    DadosMedicao_t dados;
+    Medicao_Get_UltimaMedicao(&dados);
+
+    uint8_t hh=0, mm=0, ss=0, dd=0, mo=0, yy=0;
+    char weekday_dummy[4];
+    RTC_Driver_GetTime(&hh, &mm, &ss);
+    RTC_Driver_GetDate(&dd, &mo, &yy, weekday_dummy);
+
+    int n = snprintf(qr_buffer, sizeof(qr_buffer),
+                     "G620_Teste_Gab\n"
+                     "---------------\n\r"
+                     "Produto: %.*s\n"
+										 "Umidade: %.*f %%\n"
+                     "Curva: %lu\n"
+                     "Amostra: %d\n"
+                     "Temp. instru: %.1f C\n"
+                     "Peso: %.1f g\n"
+                     "Densidade: %.1f Kg/hL\n"
+										 "Validade: %s\n"
+										 "---------------\n\r"
+                     "Data: %02u/%02u/%02u\n"
+                     "Hora: %02u:%02u:%02u",
+                     MAX_NOME_GRAO_LEN, grao.nome,
+										 (int)nr_decimals, dados.Umidade,
+                     (unsigned long)grao.id_curva,
+                     4,             
+                     dados.Temp_Instru,
+                     dados.Peso,
+                     dados.Densidade,
+										 grao.validade,
+                     dd, mo, yy,
+                     hh, mm, ss);
+
+    (void)DWIN_Driver_WriteString(RESULTADO_MEDIDA, qr_buffer, 224);
 }

@@ -1124,6 +1124,16 @@
               <FileType>1</FileType>
               <FilePath>..\Core\Src\temp_sensor.c</FilePath>
             </File>
+            <File>
+              <FileName>bq25622_driver.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\bq25622_driver.c</FilePath>
+            </File>
+            <File>
+              <FileName>bq_soc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\bq_soc.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1198,6 +1208,11 @@
               <FileName>graos_handler.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Core\Src\graos_handler.c</FilePath>
+            </File>
+            <File>
+              <FileName>battery_handler.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\battery_handler.c</FilePath>
             </File>
           </Files>
         </Group>
