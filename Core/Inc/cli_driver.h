@@ -1,13 +1,16 @@
 /**
  * ============================================================================
  * @file    cli_driver.h
- * @brief   Interface pública para o módulo de Command Line Interface (CLI).
- * @author  Gabriel Agune
+ * @brief   Driver de Command Line Interface (CLI) baseado em linha.
  *
- * Este módulo gerencia a recepção de comandos via USB (CDC-ACM),
- * o processamento desses comandos e o envio de respostas e logs
- * de volta para o host. Inclui um buffer de transmissão (FIFO)
- * para comunicação não-bloqueante.
+ * Responsável por:
+ *  - Receber caracteres da interface (USB CDC-ACM, UART etc.).
+ *  - Montar linhas de comando terminadas em '\r' ou '\n'.
+ *  - Gerenciar um FIFO de transmissão não bloqueante.
+ *  - Chamar um callback quando uma linha completa é recebida.
+ *
+ * A lógica de parsing de comandos e handlers fica em outro módulo
+ * (ex.: cli_controller).
  * ============================================================================
  */
 
@@ -17,62 +20,67 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/*
-==================================================
-  PROTÓTIPOS DE FUNÇÕES PÚBLICAS
-==================================================
-*/
-
 /**
- * @brief Inicializa o módulo CLI.
- * @note  (Implementação desta função não fornecida no .c original).
- */
-void CLI_Init(void);
-
-/**
- * @brief Processa um comando pendente que foi recebido.
+ * @brief Callback chamado quando uma linha completa é recebida.
  *
- * Esta função deve ser chamada no loop principal do sistema.
- * Ela verifica se um comando completo foi recebido (marcado por
- * 'Enter') e, em caso afirmativo, o processa.
+ * @param line String terminada em '\0' contendo o comando digitado.
+ *             O ponteiro é válido apenas durante a chamada do callback;
+ *             copie o conteúdo se precisar armazenar.
  */
-void CLI_Process(void);
+typedef void (*cli_line_callback_t)(const char* line);
 
 /**
- * @brief Recebe um único caractere da interface de comunicação (ex: USB).
+ * @brief Inicializa o driver de CLI.
  *
- * @param received_char O caractere (byte) recebido.
+ * @param line_cb Função a ser chamada quando uma linha completa for recebida.
+ *                Pode ser NULL se você quiser apenas eco/print sem comandos.
  */
-void CLI_Receive_Char(uint8_t received_char);
+void CLI_Init(cli_line_callback_t line_cb);
 
 /**
- * @brief Envia dados do buffer de transmissão (FIFO) para a porta USB.
+ * @brief Processa o envio de dados do FIFO para a interface USB.
  *
- * Esta função deve ser chamada continuamente no loop principal
- * para esvaziar o buffer de log de forma não-bloqueante.
+ * Deve ser chamado frequentemente no laço principal.
  */
 void CLI_TX_Pump(void);
 
 /**
- * @brief Verifica se o host USB (PC) está conectado e a classe CDC está ativa.
+ * @brief Enfileira uma string simples (terminada em '\0') para envio.
  *
- * @return true se o USB está pronto para comunicação, false caso contrário.
+ * @param str String a ser enviada.
  */
-bool CLI_Is_USB_Connected(void);
+void CLI_Puts(const char* str);
 
 /**
- * @brief Envia uma string formatada para o CLI (estilo printf).
+ * @brief Envia uma string formatada (printf-style) para o CLI.
  *
- * @param format A string de formato (ex: "Valor: %d").
- * @param ...    Argumentos variáveis correspondentes ao formato.
+ * @param format String de formato.
+ * @param ...    Argumentos variáveis.
  */
 void CLI_Printf(const char* format, ...);
 
 /**
- * @brief Envia uma string simples (constante) para o CLI.
+ * @brief Deve ser chamada sempre que um byte for recebido pela interface.
  *
- * @param str A string terminada em nulo a ser enviada.
+ * @param received_char Byte recebido.
  */
-void CLI_Puts(const char* str);
+void CLI_Receive_Char(uint8_t received_char);
+
+/**
+ * @brief Indica se o host USB (PC) está conectado e CDC pronto.
+ *
+ * @return true se o USB está pronto para comunicação; false caso contrário.
+ */
+bool CLI_Is_USB_Connected(void);
+
+/**
+ * @brief Processa o comando pendente chamando o callback de linha.
+ *
+ * Para compatibilidade com código existente: em muitos casos você pode
+ * deixar o callback tratar a linha imediatamente em `CLI_Receive_Char()`
+ * e `CLI_Process` acaba sendo um no-op. Aqui mantemos a função para não
+ * quebrar chamadas antigas.
+ */
+void CLI_Process(void);
 
 #endif // CLI_DRIVER_H

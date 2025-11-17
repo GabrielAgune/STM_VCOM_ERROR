@@ -1,5 +1,7 @@
-stm_vcom_error/retarget.o: ..\Core\Src\retarget.c ..\Core\Inc\retarget.h \
-  ..\Core\Inc\main.h ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal.h \
+stm_vcom_error/cli_controller.o: ..\Core\Src\cli_controller.c \
+  ..\Core\Inc\cli_controller.h ..\Core\Inc\cli_driver.h \
+  ..\Core\Inc\dwin_driver.h ..\Core\Inc\main.h \
+  ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_system.h \
   ..\Drivers\CMSIS\Device\ST\STM32C0xx\Include\stm32c0xx.h \
   ..\Drivers\CMSIS\Device\ST\STM32C0xx\Include\stm32c071xx.h \
@@ -37,10 +39,7 @@ stm_vcom_error/retarget.o: ..\Core\Src\retarget.c ..\Core\Inc\retarget.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_ll_usb.h \
   ..\Drivers\STM32C0xx_HAL_Driver\Inc\stm32c0xx_hal_pcd_ex.h \
-  ..\Core\Inc\cli_driver.h ..\USBX\App\ux_device_cdc_acm.h \
-  ..\Middlewares\ST\usbx\common\core\inc\ux_api.h \
-  ..\Middlewares\ST\usbx\ports\generic\inc\ux_port.h \
-  ..\USBX\App\ux_user.h \
-  ..\Middlewares\ST\usbx\common\core\inc\ux_utility.h \
-  ..\Middlewares\ST\usbx\common\core\inc\ux_system.h \
-  ..\Middlewares\ST\usbx\common\usbx_device_classes\inc\ux_device_class_cdc_acm.h
+  ..\Core\Inc\rtc_driver.h ..\Core\Inc\rtc.h \
+  ..\Core\Inc\medicao_handler.h ..\Core\Inc\temp_sensor.h \
+  ..\Core\Inc\relato.h ..\Core\Inc\gerenciador_configuracoes.h \
+  ..\Core\Inc\eeprom_driver.h

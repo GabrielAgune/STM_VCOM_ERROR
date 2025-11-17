@@ -32,6 +32,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_manager.h"
+#include "cli_driver.h"
+#include "cli_controller.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
@@ -113,7 +115,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 	MX_USB_PCD_Init();
 	App_Manager_Init();
-
+	CLI_Controller_Init();
 	App_Manager_Run_Self_Diagnostics(PRINCIPAL);
   /* USER CODE END 2 */
 
@@ -141,7 +143,7 @@ void USB_Process(void)
 {
 	ux_device_stack_tasks_run();
 		
-    ULONG bytes_received = 0;
+    uint32_t bytes_received = 0;
     USBD_CDC_ACM_Receive(usb_rx_buffer, sizeof(usb_rx_buffer), &bytes_received);
 
     if (bytes_received > 0)

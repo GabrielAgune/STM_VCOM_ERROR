@@ -146,6 +146,7 @@
 "stm_vcom_error\controller.o"
 "stm_vcom_error\app_manager.o"
 "stm_vcom_error\relato.o"
+"stm_vcom_error\cli_controller.o"
 "stm_vcom_error\medicao_handler.o"
 "stm_vcom_error\display_handler.o"
 "stm_vcom_error\dwin_parser.o"

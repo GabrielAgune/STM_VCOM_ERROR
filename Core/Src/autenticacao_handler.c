@@ -72,14 +72,7 @@ void Auth_ProcessSetPasswordEvent(const uint8_t* dwin_data, uint16_t len)
     switch (result)
     {
         case AUTH_RESULT_OK:
-            // ============================================================================
-            // SALVAMENTO ASSÍNCRONO (Refatorado)
-            // ============================================================================
-            // A lógica de salvamento bloqueante foi removida.
-            // Agora, apenas chamamos a FSM de feedback do display_handler.
-            // O Gerenciador_Config_Set_Senha() já foi chamado na lógica interna.
-            DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, "Senha alterada!");
-            printf("Auth: Solicitacao de salvamento de senha enviada para a FSM.\r\n");
+            Controller_SetScreen(TELA_CONFIGURAR);
             break;
             
         case AUTH_RESULT_PENDING_CONFIRMATION:

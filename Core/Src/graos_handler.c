@@ -2,7 +2,7 @@
  * @file        graos_handler.c
  * @brief       Gerenciador da tela e lgica de seleo de gros.
  * @author      Gabriel Agune (Refatorado por Gemini)
- * @details     Versão 3.0 - Não-Bloqueante.
+ * @details     Vers?o 3.0 - N?o-Bloqueante.
  * Delega o feedback de salvamento para o DisplayHandler
  * e remove todos os loops de espera (while) e Delays.
  ******************************************************************************/
@@ -11,7 +11,8 @@
 #include "controller.h"
 #include "dwin_driver.h"
 #include "gerenciador_configuracoes.h"
-#include "display_handler.h" // <<< ADICIONE ESTE INCLUDE
+#include "display_handler.h" 
+#include "dwin_parser.h"
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -57,7 +58,6 @@ static void atualizar_display_grao_selecionado(int16_t indice);
 static void Graos_Update_Page_Indicator(void);
 static GraosNavResult_t graos_handle_navegacao_logic(int16_t tecla);
 static char* stristr(const char* str1, const char* str2);
-static void Executar_Salvamento_Nao_Bloqueante(int16_t indice_grao); // Renomeado
 
 //================================================================================
 // Funes Pblicas (Handlers de Evento)
@@ -92,8 +92,9 @@ void Graos_Handle_Navegacao(int16_t tecla)
             printf("Graos_Handler: Grao (via setas) indice '%d' selecionado.\r\n", s_indice_grao_selecionado);
             s_em_tela_de_selecao = false;
             
-            // Executa salvamento NÃO-BLOQUEANTE
-            Executar_Salvamento_Nao_Bloqueante(s_indice_grao_selecionado);
+            Gerenciador_Config_Set_Grao_Ativo(s_indice_grao_selecionado);
+						Graos_Limpar_Resultados_Pesquisa();
+						Controller_SetScreen(PRINCIPAL);
             break;
 
         case NAV_RESULT_CANCELLED:
@@ -150,8 +151,9 @@ void Graos_Confirmar_Selecao_Pesquisa(uint8_t slot_selecionado)
         s_em_tela_de_selecao = false;
         s_indice_grao_selecionado = indice_final; // Atualiza o ndice da navegao por setas
 
-        // Executa salvamento NÃO-BLOQUEANTE
-        Executar_Salvamento_Nao_Bloqueante(indice_final);
+        Gerenciador_Config_Set_Grao_Ativo(s_indice_grao_selecionado);
+				Graos_Limpar_Resultados_Pesquisa();
+				Controller_SetScreen(PRINCIPAL);
     }
 }
 
@@ -233,7 +235,6 @@ static void Graos_Update_Page_Indicator(void)
     char buffer_display[8];
     sprintf(buffer_display, "%d/%d", s_current_page, s_total_pages);
     DWIN_Driver_WriteString(VP_PAGE_INDICATOR, buffer_display, strlen(buffer_display));
-    // REMOVIDO: while (DWIN_Driver_IsTxBusy())
 }
 
 // --- Funes Restauradas para Navegao por Setas ---
@@ -307,31 +308,4 @@ static char* stristr(const char* str1, const char* str2) {
         p1++;
     }
     return *p2 == 0 ? (char*)r : 0;
-}
-
-/**
- * @brief NOVA FUNÇÃO (Refatorada): Inicia o salvamento NÃO-BLOQUEANTE.
- * @param indice_grao O índice do grão selecionado a ser salvo.
- */
-static void Executar_Salvamento_Nao_Bloqueante(int16_t indice_grao)
-{
-    // ============================================================================
-    // PASSO 1: Atualizar configuração em cache
-    // ============================================================================
-    Gerenciador_Config_Set_Grao_Ativo(indice_grao);
-    
-    // ============================================================================
-    // PASSO 2: Limpar o estado da pesquisa (para a próxima vez)
-    // ============================================================================
-    Graos_Limpar_Resultados_Pesquisa();
-
-    // ============================================================================
-    // PASSO 3: Solicitar ao DisplayHandler que mostre o feedback de salvamento
-    // ============================================================================
-    // Ele mostrará "Salvando..." e, ao concluir, retornará à tela PRINCIPAL
-    // com a mensagem "Grao Salvo!".
-    DisplayHandler_StartSaveFeedback(PRINCIPAL, "Grao Salvo!");
-    
-    // A função retorna IMEDIATAMENTE. O main-loop continuará rodando.
-    // O DisplayHandler e o GerenciadorConfig farão o resto em segundo plano.
 }

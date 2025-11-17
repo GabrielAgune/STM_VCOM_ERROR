@@ -1174,6 +1174,11 @@
               <FileType>1</FileType>
               <FilePath>..\Core\Src\relato.c</FilePath>
             </File>
+            <File>
+              <FileName>cli_controller.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Core\Src\cli_controller.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -122,7 +122,7 @@ enum
     SELECT_GRAIN      = 0x2040,
     PRINT             = 0x2050,
     DESCARTA_AMOSTRA  = 0x2060,
-		SHOW_MEDIDA       = 0x2190,
+		SHOW_MEDIDA       = 0x2090,
 
     // Menu Configura??o
     ENTER_SET_TIME    = 0X3010,

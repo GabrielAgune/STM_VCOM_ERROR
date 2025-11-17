@@ -56,4 +56,5 @@ stm_vcom_error/main.o: ..\Core\Src\main.c ..\Core\Inc\main.h \
   ..\Core\Inc\relato.h ..\Core\Inc\temp_sensor.h \
   ..\Core\Inc\dwin_parser.h ..\Core\Inc\pwm_servo_driver.h \
   ..\Core\Inc\cli_driver.h ..\Core\Inc\ads1232_driver.h \
-  ..\Core\Inc\pcb_frequency.h ..\Core\Inc\servo_controle.h
+  ..\Core\Inc\pcb_frequency.h ..\Core\Inc\servo_controle.h \
+  ..\Core\Inc\cli_controller.h

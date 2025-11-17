@@ -42,20 +42,6 @@ static const uint8_t TEMP_UPDATE_PERIOD_SECONDS = 5;
 static uint32_t s_clock_last_tick = 0;
 static const uint32_t CLOCK_UPDATE_INTERVAL_MS = 1000;
 
-// --- FSM DE FEEDBACK DE SALVAMENTO ---
-typedef enum {
-    FB_STATE_IDLE,              // Ocioso
-    FB_STATE_SHOW_SAVING,       // Mostra "Salvando..."
-    FB_STATE_WAIT_SAVE_DONE,    // Espera a FSM do Gerenciador terminar
-    FB_STATE_SHOW_RESULT        // Mostra o resultado (Sucesso/Erro)
-} FeedbackState_t;
-
-static FeedbackState_t s_feedback_state = FB_STATE_IDLE;
-static uint16_t s_feedback_return_screen = PRINCIPAL;
-static char s_feedback_success_msg[50] = {0};
-static uint32_t s_feedback_timeout_tick = 0;
-static const uint32_t FEEDBACK_TIMEOUT_MS = 5000; // 5 segundos de timeout
-
 // --- Estado do Módulo ---
 static bool s_printing_enabled = true;
 
@@ -65,7 +51,7 @@ static bool s_printing_enabled = true;
 static void UpdateMonitorScreen(void);
 static void UpdateClockOnMainScreen(void);
 static void ProcessMeasurementSequenceFSM(void);
-static void ProcessFeedbackFSM(void);
+
 
 //================================================================================
 // Implementação das Funções Públicas
@@ -74,42 +60,15 @@ static void ProcessFeedbackFSM(void);
 void DisplayHandler_Init(void) {
     s_mede_state = MEDE_STATE_IDLE;
     s_printing_enabled = true;
-    s_feedback_state = FB_STATE_IDLE;
 }
 
 void DisplayHandler_Process(void) {
-    // A FSM de Feedback é a mais crítica, execute-a primeiro.
-    ProcessFeedbackFSM();
 
-    // As outras FSMs só rodam se a FSM de feedback não estiver ativa
-    if (s_feedback_state == FB_STATE_IDLE) {
-        ProcessMeasurementSequenceFSM();
-        UpdateMonitorScreen();
-        UpdateClockOnMainScreen();
-    }
+	ProcessMeasurementSequenceFSM();
+	UpdateMonitorScreen();
+	UpdateClockOnMainScreen();
 }
 
-/**
- * @brief Inicia a sequência de feedback de salvamento.
- * @details Esta função é NÃO-BLOQUEANTE.
- * @return true se o processo foi iniciado, false se já estava ocupado.
- */
-bool DisplayHandler_StartSaveFeedback(uint16_t return_screen, const char* success_msg)
-{
-    if (s_feedback_state != FB_STATE_IDLE) {
-        return false; 
-    }
-
-    printf("Display: Iniciando feedback de salvamento. Retorno: %u\r\n", return_screen);
-
-    Gerenciador_Config_Marcar_Como_Pendente();
-
-    s_feedback_return_screen = return_screen;
-    strncpy(s_feedback_success_msg, success_msg, sizeof(s_feedback_success_msg) - 1);
-    s_feedback_state = FB_STATE_SHOW_SAVING;
-
-    return true;
-}
 
 void Display_StartMeasurementSequence(void) {
     if (s_mede_state == MEDE_STATE_IDLE) {
@@ -181,7 +140,7 @@ void Display_SetRepeticoes(uint16_t received_value)
         // Lógica de salvamento NÃO-BLOQUEANTE
         Gerenciador_Config_Set_NR_Repetitions(received_value);
         sprintf(buffer, "Repeticoes: %u", received_value);
-        DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer);
+        DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
     }
 }
 
@@ -197,7 +156,7 @@ void Display_SetDecimals(uint16_t received_value)
         // Lógica de salvamento NÃO-BLOQUEANTE
         Gerenciador_Config_Set_NR_Decimals(received_value);
         sprintf(buffer, "Casas decimais: %u", received_value);
-        DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer);
+				DWIN_Driver_WriteString(VP_MESSAGES, buffer, strlen(buffer));
     }
 }
 
@@ -216,10 +175,9 @@ void Display_SetUser(const uint8_t* dwin_data, uint16_t len, uint16_t received_v
         uint16_t payload_len = len - 6;
 
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, novo_nome, sizeof(novo_nome)) && strlen(novo_nome) > 0) {
-            // Lógica de salvamento NÃO-BLOQUEANTE
             Gerenciador_Config_Set_Usuario(novo_nome);
             sprintf(buffer_display, "Usuario: %s", novo_nome);
-            DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer_display);
+            DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
         }
     }
 }
@@ -239,10 +197,9 @@ void Display_SetCompany(const uint8_t* dwin_data, uint16_t len, uint16_t receive
         uint16_t payload_len = len - 6;
         
         if (DWIN_Parse_String_Payload_Robust(payload, payload_len, nova_empresa, sizeof(nova_empresa)) && strlen(nova_empresa) > 0) {
-            // Lógica de salvamento NÃO-BLOQUEANTE
             Gerenciador_Config_Set_Company(nova_empresa);
             sprintf(buffer_display, "Empresa: %s", nova_empresa);
-            DisplayHandler_StartSaveFeedback(TELA_CONFIGURAR, buffer_display);
+            DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
         }
     }
 }
@@ -274,9 +231,8 @@ void Display_Preset(uint16_t received_value)
     }
     else
     {
-        // Lógica de salvamento NÃO-BLOQUEANTE
-        Carregar_Configuracao_Padrao(); // Isso já marca como pendente
-        DisplayHandler_StartSaveFeedback(TELA_SERVICO, "Preset completo!");
+        Carregar_Configuracao_Padrao(); 
+				DWIN_Driver_WriteString(VP_MESSAGES, "Peset completo!", strlen("Peset completo!"));
     }
 }
 
@@ -304,10 +260,7 @@ void Display_Set_Serial(const uint8_t* dwin_data, uint16_t len, uint16_t receive
             printf("Display Handler: Recebido novo serial: '%s'\n", novo_serial);
             Gerenciador_Config_Set_Serial(novo_serial);
             sprintf(buffer_display, "Serial: %s", novo_serial);
-            
-            if (DisplayHandler_StartSaveFeedback(TELA_SERVICO, buffer_display)) {
-                printf("Display: Serial salvo com sucesso.\r\n");
-            }
+            DWIN_Driver_WriteString(VP_MESSAGES, buffer_display, strlen(buffer_display));
         }
     }
 }
@@ -321,61 +274,6 @@ bool Display_IsPrintingEnabled(void) {
     return s_printing_enabled;
 }
 
-//================================================================================
-// Implementação das Funções Privadas (Lógica de Fundo)
-//================================================================================
-
-/**
- * @brief (NOVA FSM) Gerencia a UI de feedback de salvamento de forma assíncrona.
- */
-static void ProcessFeedbackFSM(void)
-{
-    switch (s_feedback_state)
-    {
-        case FB_STATE_IDLE:
-            // Nada a fazer
-            break;
-
-        case FB_STATE_SHOW_SAVING:
-            // A FSM do Gerenciador será iniciada no próximo ciclo do main-loop
-            // porque a flag 'dirty' foi setada em StartSaveFeedback
-            Controller_SetScreen(MSG_ALERTA);
-            DWIN_Driver_WriteString(VP_MESSAGES, "Salvando...", 11);
-            s_feedback_timeout_tick = HAL_GetTick() + FEEDBACK_TIMEOUT_MS;
-            s_feedback_state = FB_STATE_WAIT_SAVE_DONE;
-            break;
-
-        case FB_STATE_WAIT_SAVE_DONE:
-            // Verifica se a FSM do gerenciador terminou (flag 'dirty' está limpa)
-            if (!Gerenciador_Config_Ha_Pendencias())
-            {
-                Controller_SetScreen(s_feedback_return_screen);
-                DWIN_Driver_WriteString(VP_MESSAGES, s_feedback_success_msg, strlen(s_feedback_success_msg));
-                s_feedback_state = FB_STATE_IDLE;
-            }
-            // Verifica se a FSM do gerenciador reportou um erro
-            else if (Gerenciador_Config_GetAndClearErrorFlag())
-            {
-                Controller_SetScreen(MSG_ERROR);
-                DWIN_Driver_WriteString(VP_MESSAGES, "Erro ao salvar!", 15);
-                s_feedback_state = FB_STATE_IDLE;
-            }
-            // Verifica timeout
-            else if (HAL_GetTick() > s_feedback_timeout_tick)
-            {
-                Controller_SetScreen(MSG_ERROR);
-                DWIN_Driver_WriteString(VP_MESSAGES, "Erro: Timeout!", 15);
-                s_feedback_state = FB_STATE_IDLE;
-            }
-            // Se nenhuma das condições acima for atendida, continua esperando
-            // (o main-loop continua rodando e chamando Gerenciador_Config_Run_FSM)
-            break;
-        
-        default:
-            s_feedback_state = FB_STATE_IDLE;
-            break;
-    }
-}
 
 /**
  * @brief Máquina de estados NÃO-BLOQUEANTE para a sequência de medição.

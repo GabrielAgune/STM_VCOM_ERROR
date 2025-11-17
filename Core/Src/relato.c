@@ -120,7 +120,7 @@ void Relatorio_QRCode_WhoAmI(void)
 
     int n = snprintf(qr_buffer, sizeof(qr_buffer),
                      "G620_Teste_Gab\n"
-                     "---------------\n\r"
+                     "===================\n\r"
                      "Produto: %.*s\n"
 										 "Umidade: %.*f %%\n"
                      "Curva: %lu\n"
@@ -129,7 +129,7 @@ void Relatorio_QRCode_WhoAmI(void)
                      "Peso: %.1f g\n"
                      "Densidade: %.1f Kg/hL\n"
 										 "Validade: %s\n"
-										 "---------------\n\r"
+										 "===================\n\r"
                      "Data: %02u/%02u/%02u\n"
                      "Hora: %02u:%02u:%02u",
                      MAX_NOME_GRAO_LEN, grao.nome,
@@ -143,5 +143,5 @@ void Relatorio_QRCode_WhoAmI(void)
                      dd, mo, yy,
                      hh, mm, ss);
 
-    (void)DWIN_Driver_WriteString(RESULTADO_MEDIDA, qr_buffer, 224);
+    (void)DWIN_Driver_WriteString(RESULTADO_MEDIDA, qr_buffer, sizeof(qr_buffer));
 }
